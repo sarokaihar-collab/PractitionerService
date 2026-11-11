@@ -1,4 +1,5 @@
-﻿using PractitionerService.Application.Common.Exceptions;
+﻿using PractitionerService.Api.Fhir.Models;
+using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Common.Exceptions;
 
 namespace PractitionerService.Api.Fhir;

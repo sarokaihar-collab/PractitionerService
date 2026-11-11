@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080"
+      "value": "http://localhost:8081"
     },
     {
       "key": "practitionerId",
@@ -49,7 +49,7 @@
         "url": "{{baseUrl}}/Practitioner",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [ { \"family\": \"Иванов\", \"given\": [\"Иван\"] } ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-900-123-45-67\" },\n    { \"system\": \"email\", \"value\": \"i.ivanov@clinic.ru\" }\n  ],\n  \"qualification\": [ { \"code\": { \"text\": \"Кардиолог\" } } ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"ГКБ №1\" }\n  ]\n}",
+          "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [ { \"family\": \"Тестов\", \"given\": [\"Пётр\"] } ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+37533-123-45-67\" },\n    { \"system\": \"email\", \"value\": \"p.testov@test-clinic.ru\" }\n  ],\n  \"qualification\": [ { \"code\": { \"text\": \"Кардиолог\" } } ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"ГКБ №1\" }\n  ]\n}",
           "options": { "raw": { "language": "json" } }
         }
       }
@@ -156,7 +156,7 @@
         "url": "{{baseUrl}}/Practitioner/{{practitionerId}}",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [ { \"family\": \"Иванов-Обновлённый\", \"given\": [\"Иван\"] } ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-900-123-45-99\" },\n    { \"system\": \"email\", \"value\": \"i.ivanov@clinic.ru\" }\n  ],\n  \"qualification\": [ { \"code\": { \"text\": \"Кардиолог-хирург\" } } ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"ГКБ №2\" }\n  ]\n}",
+          "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [ { \"family\": \"Тестов-Обновлённый\", \"given\": [\"Пётр\"] } ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+37533-100-20-31\" },\n    { \"system\": \"email\", \"value\": \"p.testov-updated@test-clinic.ru\" }\n  ],\n  \"qualification\": [ { \"code\": { \"text\": \"Кардиолог-хирург\" } } ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Тестовая клиника №2\" }\n  ]\n}",
           "options": { "raw": { "language": "json" } }
         }
       }

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
 using PractitionerService.Api.Fhir;
 using PractitionerService.Api.Middleware;
 using PractitionerService.Infrastructure;
 using PractitionerService.Infrastructure.Persistence;
+using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 
@@ -50,7 +52,24 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Practitioner Service API (FHIR R5)",
+        Version = "v1",
+        Description =
+            "Backend-сервис справочника врачей. " +
+            "Реализует FHIR R5-совместимый REST API для ресурса Practitioner. " +
+            "Принимает `application/fhir+json` и `application/json`, отдаёт `application/fhir+json`. " +
+            "Ошибки возвращаются в формате `OperationOutcome`."
+    });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+});
 
 var app = builder.Build();
 

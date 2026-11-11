@@ -1,4 +1,5 @@
 ﻿using PractitionerService.Api.Fhir;
+using PractitionerService.Api.Fhir.Models;
 using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Common.Exceptions;
 using System.Text.Encodings.Web;

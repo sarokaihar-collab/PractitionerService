@@ -15,7 +15,9 @@ internal sealed class PractitionerConfiguration : IEntityTypeConfiguration<Pract
         builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
         builder.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
-        builder.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(32).IsRequired();
+        
+        // Phone must be unique among active (non-deleted) practitioners.
+        builder.HasIndex(x => x.Phone).IsUnique().HasFilter("is_deleted = false").HasDatabaseName("ux_practitioners_phone_active"); 
         builder.Property(x => x.Speciality).HasColumnName("speciality").HasMaxLength(200).IsRequired();
         builder.Property(x => x.PlaceOfWork).HasColumnName("place_of_work").HasMaxLength(200).IsRequired();
         builder.Property(x => x.Email).HasColumnName("email").HasMaxLength(254).IsRequired();

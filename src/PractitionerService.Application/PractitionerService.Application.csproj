@@ -1,18 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+  </PropertyGroup>
+	
   <ItemGroup>
     <PackageReference Include="MediatR" Version="12.5.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.15" />
   </ItemGroup>
+
+  <PropertyGroup>
+	<RestoreFallbackFolders>clear</RestoreFallbackFolders>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PractitionerService.Domain\PractitionerService.Domain.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+
 
 </Project>

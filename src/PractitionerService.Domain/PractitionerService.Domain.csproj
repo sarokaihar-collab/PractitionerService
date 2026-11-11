@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+	<RestoreFallbackFolders>clear</RestoreFallbackFolders>
+  </PropertyGroup>
+
 </Project>

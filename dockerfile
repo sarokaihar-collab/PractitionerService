@@ -1,5 +1,5 @@
 # ===== Stage 1: build =====
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 1. Копируем .csproj отдельно — для кэширования restore
@@ -21,10 +21,9 @@ RUN dotnet publish "PractitionerService.Api.csproj" \
     /p:UseAppHost=false
 
 # ===== Stage 2: runtime =====
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# curl нужен для HEALTHCHECK (в aspnet:9.0 его нет)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
@@ -35,7 +34,6 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
-# Встроенный non-root user app (UID 1654) — присутствует в aspnet:9.0
 USER $APP_UID
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \

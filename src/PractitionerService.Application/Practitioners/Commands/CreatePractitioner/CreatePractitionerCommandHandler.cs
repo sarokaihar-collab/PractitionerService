@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Practitioners;
 
 public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePractitionerCommand, PractitionerDto>
@@ -38,7 +39,8 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
         {
             await _uow.SaveChangesAsync(ct);
         }
-        catch (UniqueConstraintViolationException) when (!string.IsNullOrWhiteSpace(cmd.SourceEventId))
+        catch (UniqueConstraintViolationException ex)
+            when (ex.Field == UniqueConstraintField.SourceEventId && !string.IsNullOrWhiteSpace(cmd.SourceEventId))
         {
             // Race: another request managed to create the same SourceEventId first. Return its result.
             var existing = await _repo.FindBySourceEventIdAsync(cmd.SourceEventId!, ct);
