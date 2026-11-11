@@ -1,0 +1,6 @@
+@PractitionerService.Api_HostAddress = http://localhost:5032
+
+GET {{PractitionerService.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

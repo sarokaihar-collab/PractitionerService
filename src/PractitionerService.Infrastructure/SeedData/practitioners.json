@@ -1,0 +1,92 @@
+[
+  {
+    "firstName": "Иван",
+    "lastName": "Иванов",
+    "phone": "+7-900-100-00-01",
+    "speciality": "Кардиолог",
+    "placeOfWork": "ГКБ №1",
+    "email": "i.ivanov@clinic1.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Анна",
+    "lastName": "Петрова",
+    "phone": "+7-900-100-00-02",
+    "speciality": "Терапевт",
+    "placeOfWork": "Поликлиника №5",
+    "email": "a.petrova@clinic5.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Сергей",
+    "lastName": "Сидоров",
+    "phone": "+7-900-100-00-03",
+    "speciality": "Невролог",
+    "placeOfWork": "ГКБ №12",
+    "email": "s.sidorov@clinic12.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Мария",
+    "lastName": "Кузнецова",
+    "phone": "+7-900-100-00-04",
+    "speciality": "Педиатр",
+    "placeOfWork": "Детская поликлиника №3",
+    "email": "m.kuznetsova@dp3.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Алексей",
+    "lastName": "Смирнов",
+    "phone": "+7-900-100-00-05",
+    "speciality": "Хирург",
+    "placeOfWork": "ГКБ №7",
+    "email": "a.smirnov@clinic7.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Ольга",
+    "lastName": "Волкова",
+    "phone": "+7-900-100-00-06",
+    "speciality": "Офтальмолог",
+    "placeOfWork": "Медицинский центр «Зрение»",
+    "email": "o.volkova@zrenie.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Дмитрий",
+    "lastName": "Морозов",
+    "phone": "+7-900-100-00-07",
+    "speciality": "Эндокринолог",
+    "placeOfWork": "ГКБ №4",
+    "email": "d.morozov@clinic4.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Елена",
+    "lastName": "Новикова",
+    "phone": "+7-900-100-00-08",
+    "speciality": "Дерматолог",
+    "placeOfWork": "Клиника «Здоровье»",
+    "email": "e.novikova@zdorovie.ru",
+    "isActive": true
+  },
+  {
+    "firstName": "Павел",
+    "lastName": "Фёдоров",
+    "phone": "+7-900-100-00-09",
+    "speciality": "Уролог",
+    "placeOfWork": "ГКБ №9",
+    "email": "p.fedorov@clinic9.ru",
+    "isActive": false
+  },
+  {
+    "firstName": "Татьяна",
+    "lastName": "Соколова",
+    "phone": "+7-900-100-00-10",
+    "speciality": "Психиатр",
+    "placeOfWork": "ПНД №2",
+    "email": "t.sokolova@pnd2.ru",
+    "isActive": true
+  }
+]
