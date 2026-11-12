@@ -5,9 +5,11 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://localhost:5032",
+      "applicationUrl": "http://localhost:8081",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__Default": "Host=localhost;Port=5434;Database=practitioners;Username=postgres;Password=postgres",
+        "Redis__Configuration": "localhost:6380"
       }
     },
     "https": {

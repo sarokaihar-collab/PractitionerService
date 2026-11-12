@@ -5,7 +5,7 @@ using PractitionerService.Application.Common;
 using PractitionerService.Infrastructure.Caching;
 using PractitionerService.Infrastructure.Messaging;
 using PractitionerService.Infrastructure.Persistence;
-using PractitionerService.Infrastructure.Persistence.repositorysitories;
+using PractitionerService.Infrastructure.Persistence.Repositories;
 using PractitionerService.Infrastructure.Time;
 using StackExchange.Redis;
 

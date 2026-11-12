@@ -21,7 +21,8 @@ public sealed class GetPractitionerByIdQueryHandler : IRequestHandler<GetPractit
         var cacheKey = CacheKeys.PractitionerById(q.Id);
 
         var cached = await _cache.GetAsync<PractitionerReadModel>(cacheKey, ct);
-        if (cached is not null) return cached;
+        if (cached is not null) 
+            return cached;
 
         var p = await _repo.GetByIdAsync(q.Id, ct);
         if (p is null) throw new NotFoundException($"Practitioner {q.Id} не найден.");

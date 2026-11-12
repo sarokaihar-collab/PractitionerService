@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\PractitionerService.Api\PractitionerService.Api.csproj" />
     <ProjectReference Include="..\..\src\PractitionerService.Domain\PractitionerService.Domain.csproj" />
     <ProjectReference Include="..\..\src\PractitionerService.Application\PractitionerService.Application.csproj" />
   </ItemGroup>

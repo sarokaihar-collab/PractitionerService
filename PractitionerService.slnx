@@ -6,7 +6,6 @@
     <Project Path="src/PractitionerService.Infrastructure/PractitionerService.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/PractitionerService.IntegrationTests/PractitionerService.IntegrationTests.csproj" />
     <Project Path="tests/PractitionerService.UnitTests/PractitionerService.UnitTests.csproj" />
   </Folder>
 </Solution>
