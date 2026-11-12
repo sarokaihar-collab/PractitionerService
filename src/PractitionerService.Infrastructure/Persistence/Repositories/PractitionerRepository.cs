@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PractitionerService.Domain.Practitioners;
 
-namespace PractitionerService.Infrastructure.Persistence.Repositories;
+namespace PractitionerService.Infrastructure.Persistence.repositorysitories;
 
 internal sealed class PractitionerRepository : IPractitionerRepository
 {

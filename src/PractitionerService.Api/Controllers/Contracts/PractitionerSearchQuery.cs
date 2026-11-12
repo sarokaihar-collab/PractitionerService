@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace PractitionerService.Api.Controllers.Dtos;
+namespace PractitionerService.Api.Controllers.Contracts;
 
 /// <summary>
 /// Параметры поиска врачей. Все параметры опциональны.

@@ -1,3 +1,3 @@
 ﻿using MediatR;
 
-public sealed record SearchPractitionersQuery(PractitionerFilter Filter) : IRequest<PagedResult<PractitionerDto>>;
+public sealed record SearchPractitionersQuery(PractitionerFilter Filter) : IRequest<PagedResult<PractitionerReadModel>>;

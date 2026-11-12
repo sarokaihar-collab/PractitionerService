@@ -15,6 +15,20 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+      
+  redis:
+    image: redis:7-alpine
+    container_name: practitionerservice-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s    
 
   api:
     build:
@@ -23,11 +37,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=practitioners;Username=postgres;Password=postgres"
+      Redis__Configuration: "redis:6379"
     ports:
       - "8081:8080"
 
 volumes:
   pgdata:
+  redisdata:

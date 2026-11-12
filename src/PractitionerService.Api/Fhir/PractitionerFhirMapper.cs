@@ -3,13 +3,9 @@ using PractitionerService.Application.Common.Exceptions;
 
 namespace PractitionerService.Api.Fhir;
 
-/// <summary>
-/// Two-way mapping: FHIR POCO <-> Application commands <-> read model.
-/// The domain is FHIR-agnostic; this is the only place where both worlds meet.
-/// </summary>
 public static class PractitionerFhirMapper
 {
-    public static FhirPractitionerResource ToFhir(PractitionerDto m)
+    public static FhirPractitionerResource ToFhir(PractitionerReadModel m)
     {
         var resource = new FhirPractitionerResource
         {
@@ -51,7 +47,7 @@ public static class PractitionerFhirMapper
         return resource;
     }
 
-    public static FhirBundle ToBundle(PagedResult<PractitionerDto> page, PractitionerFilter filter, string selfBaseUrl)
+    public static FhirBundle ToBundle(PagedResult<PractitionerReadModel> page, PractitionerFilter filter, string selfBaseUrl)
     {
         var bundle = new FhirBundle
         {

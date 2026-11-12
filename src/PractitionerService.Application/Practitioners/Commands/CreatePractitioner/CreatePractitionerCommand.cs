@@ -8,4 +8,4 @@ public sealed record CreatePractitionerCommand(
     string PlaceOfWork,
     string Email,
     bool? IsActive,
-    string? SourceEventId) : IRequest<PractitionerDto>;
+    string? SourceEventId) : IRequest<PractitionerCommandResult>;

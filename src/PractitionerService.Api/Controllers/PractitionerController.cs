@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PractitionerService.Api.Fhir;
 using PractitionerService.Api.Fhir.Models;
-using PractitionerService.Api.Controllers.Dtos;
+using PractitionerService.Api.Controllers.Contracts;
 
 namespace PractitionerService.Api.Controllers;
 
@@ -31,7 +31,6 @@ public sealed class PractitionerController : ControllerBase
     /// <response code="201">Врач создан. Возвращается ресурс с заполненными id и meta.versionId.</response>
     /// <response code="409">Конфликт: email или телефон уже занят другим активным врачом.</response>
     /// <response code="422">Нарушение структуры FHIR или бизнес-инвариантов домена.</response>
-    [HttpPost]
     [HttpPost]
     [ProducesResponseType(typeof(FhirPractitionerResource), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(FhirOperationOutcome), StatusCodes.Status422UnprocessableEntity)]

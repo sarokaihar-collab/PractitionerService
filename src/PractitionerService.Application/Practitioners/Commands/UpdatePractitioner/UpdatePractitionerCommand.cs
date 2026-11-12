@@ -9,4 +9,4 @@ public sealed record UpdatePractitionerCommand(
     string PlaceOfWork,
     string Email,
     bool? IsActive,
-    int? ExpectedVersion) : IRequest<PractitionerDto>;
+    int? ExpectedVersion) : IRequest<PractitionerCommandResult>;
