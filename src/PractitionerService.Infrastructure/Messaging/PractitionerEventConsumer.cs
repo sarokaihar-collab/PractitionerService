@@ -119,13 +119,15 @@ internal sealed class PractitionerEventConsumer : BackgroundService
     private async Task EnsureConsumerGroupAsync(CancellationToken ct)
     {
         var db = _redis.GetDatabase();
-        try
+        var created = await db.StreamCreateConsumerGroupAsync(StreamKey, GroupName, "0-0", createStream: true);
+
+        if (created)
         {
-            await db.StreamCreateConsumerGroupAsync(StreamKey, GroupName, "0-0", createStream: true);
+            _logger.LogInformation("Created consumer group '{Group}' on stream '{Stream}'.", GroupName, StreamKey);
         }
-        catch (RedisServerException ex) when (ex.Message.StartsWith("BUSYGROUP"))
+        else
         {
-            // Group already exists — fine.
+            _logger.LogInformation("Consumer group '{Group}' already exists on stream '{Stream}'.", GroupName, StreamKey);
         }
     }
 }

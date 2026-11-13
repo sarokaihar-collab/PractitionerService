@@ -2,6 +2,7 @@
 
 public static class FhirConstants
 {
+    public const string CreatedAtExtensionUrl = "http://example.org/fhir/StructureDefinition/created-at";
     public const string ResourceTypePractitioner = "Practitioner";
     public const string ResourceTypeBundle = "Bundle";
     public const string ResourceTypeOperationOutcome = "OperationOutcome";

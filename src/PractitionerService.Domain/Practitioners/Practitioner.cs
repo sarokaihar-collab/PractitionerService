@@ -1,4 +1,5 @@
 ﻿using PractitionerService.Domain.Common.Exceptions;
+using System.Net.Mail;
 
 namespace PractitionerService.Domain.Practitioners;
 
@@ -34,7 +35,7 @@ public sealed class Practitioner
             Id = Guid.NewGuid(),
             FirstName = firstName.Trim(),
             LastName = lastName.Trim(),
-            Phone = phone.Trim(),
+            Phone = NormalizePhone(phone),
             Speciality = speciality.Trim(),
             PlaceOfWork = placeOfWork.Trim(),
             Email = email.Trim().ToLowerInvariant(),
@@ -54,7 +55,7 @@ public sealed class Practitioner
 
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
-        Phone = phone.Trim();
+        Phone = NormalizePhone(phone);
         Speciality = speciality.Trim();
         PlaceOfWork = placeOfWork.Trim();
         Email = email.Trim().ToLowerInvariant();
@@ -77,7 +78,6 @@ public sealed class Practitioner
     {
         RequireNonEmpty(firstName, nameof(firstName), maxLen: 100);
         RequireNonEmpty(lastName, nameof(lastName), maxLen: 100);
-        RequireNonEmpty(phone, nameof(phone), maxLen: 32);
         RequireNonEmpty(speciality, nameof(speciality), maxLen: 200);
         RequireNonEmpty(placeOfWork, nameof(placeOfWork), maxLen: 200);
         RequireNonEmpty(email, nameof(email), maxLen: 254);
@@ -102,7 +102,18 @@ public sealed class Practitioner
 
     private static bool LooksLikeEmail(string value)
     {
-        var at = value.IndexOf('@');
-        return at > 0 && at < value.Length - 1 && value.IndexOf('.', at) > at + 1;
+        return MailAddress.TryCreate(value, out var addr) && addr.Address == value;
+    }
+
+    private static string NormalizePhone(string phone)
+    {
+        var trimmed = phone.Trim();
+        var hasPlus = trimmed.StartsWith('+');
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+
+        if (string.IsNullOrEmpty(digits))
+            throw new DomainException($"Поле 'phone' не содержит цифр.");
+
+        return hasPlus ? "+" + digits : digits;
     }
 }

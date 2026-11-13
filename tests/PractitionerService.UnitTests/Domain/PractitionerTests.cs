@@ -89,4 +89,28 @@ public sealed class PractitionerTests
 
         p.Version.Should().Be(2);   // 1 (create) + 1 (delete); повторные вызовы — no-op
     }
+
+    [Fact]
+    public void Create_NormalizesPhoneToE164Like()
+    {
+        var p = Practitioner.Create("Иван", "Иванов", " +7 (900) 100-00-01 ", "Кардиолог", "ГКБ №1", "i@example.ru", true, Now);
+
+        p.Phone.Should().Be("+79001000001");
+    }
+
+    [Fact]
+    public void Create_PhoneWithoutPlus_KeepsDigitsOnly()
+    {
+        var p = Practitioner.Create("Иван", "Иванов", "8-900-100-00-01", "Кардиолог", "ГКБ №1", "i@example.ru", true, Now);
+
+        p.Phone.Should().Be("89001000001");
+    }
+
+    [Fact]
+    public void Create_PhoneWithoutDigits_ThrowsDomainException()
+    {
+        var act = () => Practitioner.Create("Иван", "Иванов", "нет цифр", "Кардиолог", "ГКБ №1", "i@example.ru", true, Now);
+
+        act.Should().Throw<DomainException>().WithMessage("Поле 'phone' не содержит цифр.");
+    }
 }

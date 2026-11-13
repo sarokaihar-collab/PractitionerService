@@ -39,12 +39,14 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
         {
             await _unitOfWork.SaveChangesAsync(ct);
         }
-        catch (UniqueConstraintViolationException ex)
-            when (ex.Field == UniqueConstraintField.SourceEventId && !string.IsNullOrWhiteSpace(cmd.SourceEventId))
+        catch (UniqueConstraintViolationException ex) when (ex.Field == UniqueConstraintField.SourceEventId)
         {
-            // Race: another request managed to create the same SourceEventId first. Return its result.
+            // Detach the failed attempt so it does not retry on any subsequent SaveChanges
+            _unitOfWork.Detach(practitioner);
+
             var existing = await _repository.FindBySourceEventIdAsync(cmd.SourceEventId!, ct);
-            if (existing is not null) return new PractitionerCommandResult(existing.Id, existing.Version);
+            if (existing is not null) 
+                return new PractitionerCommandResult(existing.Id, existing.Version);  // или return (Id, Version)
             throw;
         }
 

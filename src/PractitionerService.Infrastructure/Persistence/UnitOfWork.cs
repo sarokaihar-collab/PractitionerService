@@ -18,6 +18,8 @@ internal sealed class UnitOfWork : IUnitOfWork
         _logger = logger;
     }
 
+    public void Detach<T>(T entity) where T : class => _db.Entry(entity).State = EntityState.Detached;
+
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         try
@@ -39,19 +41,15 @@ internal sealed class UnitOfWork : IUnitOfWork
         }
     }
 
-    /// <summary>
-    /// Maps a PostgreSQL unique index name to a strongly-typed field and a user-friendly message.
-    /// Keeps DB-specific identifiers out of the Application layer.
-    /// </summary>
-    private static (UniqueConstraintField Field, string Message) ResolveUniqueViolation(string? constraintName) =>
-        constraintName switch
+    private static readonly Dictionary<string, (UniqueConstraintField Field, string Message)>
+        ConstraintMap = new()
         {
-            "ux_practitioners_email_active" => (UniqueConstraintField.Email, "Врач с таким email уже существует."),
-
-            "ux_practitioners_phone_active" => (UniqueConstraintField.Phone, "Врач с таким телефоном уже существует."),
-
-            "ux_practitioners_source_event_id" => (UniqueConstraintField.SourceEventId, "Запрос с таким идентификатором события уже обработан."),
-
-            _ => (UniqueConstraintField.Unknown, "Нарушено уникальное ограничение данных.")
+            ["ux_practitioners_email_active"] = (UniqueConstraintField.Email, "Врач с таким email уже существует."),
+            ["ux_practitioners_phone_active"] = (UniqueConstraintField.Phone, "Врач с таким телефоном уже существует."),
+            ["ux_practitioners_source_event_id"] =(UniqueConstraintField.SourceEventId, "Запрос с таким идентификатором события уже обработан."),
         };
+
+    private static (UniqueConstraintField Field, string Message) ResolveUniqueViolation(string? constraintName) =>
+        constraintName is not null && ConstraintMap.TryGetValue(constraintName, out var v)
+            ? v : (UniqueConstraintField.Unknown, "Нарушено уникальное ограничение данных.");
 }

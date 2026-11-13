@@ -1,8 +1,11 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using PractitionerService.Api.Controllers.Contracts;
 using PractitionerService.Api.Fhir;
 using PractitionerService.Api.Fhir.Models;
-using PractitionerService.Api.Controllers.Contracts;
+using PractitionerService.Api.Http;
+using PractitionerService.Application.Common.Exceptions;
 
 namespace PractitionerService.Api.Controllers;
 
@@ -41,7 +44,13 @@ public sealed class PractitionerController : ControllerBase
         if (string.IsNullOrEmpty(sourceEventId))
         {
             var key = Request.Headers["Idempotency-Key"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(key)) sourceEventId = $"idem:{key}";
+            if (!string.IsNullOrEmpty(key))
+            {
+                if (key.Length > 200)
+                    throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Заголовок Idempotency-Key не должен превышать 200 символов (передано {key.Length}).");
+
+                sourceEventId = $"idem:{key}";
+            }
         }
 
         var command = PractitionerFhirMapper.ToCreateCommand(resource, sourceEventId);
@@ -50,7 +59,7 @@ public sealed class PractitionerController : ControllerBase
 
         var location = $"{Request.Scheme}://{Request.Host}/Practitioner/{result.Id}";
         Response.Headers.Location = location;
-        Response.Headers.ETag = $"\"{result.Version}\"";
+        Response.SetETag(result.Version);
 
         return StatusCode(StatusCodes.Status201Created, PractitionerFhirMapper.ToFhir(readModel));
     }
@@ -70,7 +79,7 @@ public sealed class PractitionerController : ControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var dto = await _mediator.Send(new GetPractitionerByIdQuery(id), ct);
-        Response.Headers.ETag = $"\"{dto.Version}\"";
+        Response.SetETag(dto.Version);
         return Ok(PractitionerFhirMapper.ToFhir(dto));
     }
 
@@ -101,15 +110,27 @@ public sealed class PractitionerController : ControllerBase
         var ifMatch = Request.Headers.IfMatch.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(ifMatch))
         {
-            var raw = ifMatch.Replace("W/", "", StringComparison.Ordinal).Trim('"', ' ');
-            if (int.TryParse(raw, out var v)) expectedVersion = v;
+            var raw = ifMatch.Replace("W/", "", StringComparison.Ordinal).Trim().Trim('"', ' ');
+            if (raw == "*")
+            {
+                // "Update if exists" — existence checked by the handler (404/410).
+                // No version check — this is the documented FHIR semantics.
+            }
+            else if (int.TryParse(raw, out var v))
+            {
+                expectedVersion = v;
+            }
+            else
+            {
+                throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Некорректный If-Match: '{ifMatch}'. Ожидается \"<version>\" или \"*\".");
+            }
         }
 
         var command = PractitionerFhirMapper.ToUpdateCommand(id, resource, expectedVersion);
         var result = await _mediator.Send(command, ct);
         var readModel = await _mediator.Send(new GetPractitionerByIdQuery(result.Id), ct);
 
-        Response.Headers.ETag = $"\"{result.Version}\"";
+        Response.SetETag(result.Version);
         return Ok(PractitionerFhirMapper.ToFhir(readModel));
     }
 
@@ -164,8 +185,6 @@ public sealed class PractitionerController : ControllerBase
         var normalizedFilter = filter with { Offset = page.Offset, Count = page.Count };
 
         var bundle = PractitionerFhirMapper.ToBundle(page, normalizedFilter, baseUrl);
-        PractitionerFhirMapper.AppendNextIfAny(bundle, normalizedFilter, baseUrl);
-
         return Ok(bundle);
     }
 }

@@ -20,6 +20,7 @@ namespace PractitionerService.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("PractitionerService.Domain.Practitioners.Practitioner", b =>
@@ -62,7 +63,9 @@ namespace PractitionerService.Infrastructure.Migrations
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
 
                     b.Property<string>("PlaceOfWork")
                         .IsRequired()
@@ -71,8 +74,8 @@ namespace PractitionerService.Infrastructure.Migrations
                         .HasColumnName("place_of_work");
 
                     b.Property<string>("SourceEventId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("source_event_id");
 
                     b.Property<string>("Speciality")
@@ -98,12 +101,18 @@ namespace PractitionerService.Infrastructure.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("FirstName")
-                        .HasDatabaseName("ix_practitioners_first_name_active")
+                        .HasDatabaseName("ix_practitioners_first_name_trgm")
                         .HasFilter("is_deleted = false");
 
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("FirstName"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("FirstName"), new[] { "gin_trgm_ops" });
+
                     b.HasIndex("LastName")
-                        .HasDatabaseName("ix_practitioners_last_name_active")
+                        .HasDatabaseName("ix_practitioners_last_name_trgm")
                         .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("LastName"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("LastName"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("Phone")
                         .IsUnique()
@@ -111,8 +120,11 @@ namespace PractitionerService.Infrastructure.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("PlaceOfWork")
-                        .HasDatabaseName("ix_practitioners_place_of_work_active")
+                        .HasDatabaseName("ix_practitioners_place_of_work_trgm")
                         .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("PlaceOfWork"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("PlaceOfWork"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("SourceEventId")
                         .IsUnique()
@@ -120,8 +132,11 @@ namespace PractitionerService.Infrastructure.Migrations
                         .HasFilter("source_event_id IS NOT NULL");
 
                     b.HasIndex("Speciality")
-                        .HasDatabaseName("ix_practitioners_speciality_active")
+                        .HasDatabaseName("ix_practitioners_speciality_trgm")
                         .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Speciality"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Speciality"), new[] { "gin_trgm_ops" });
 
                     b.ToTable("practitioners", (string)null);
                 });

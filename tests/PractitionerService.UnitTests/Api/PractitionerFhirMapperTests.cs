@@ -130,31 +130,29 @@ public sealed class PractitionerFhirMapperTests
     // ==== ToBundle ====
 
     [Fact]
-    public void ToBundle_WithOneItem_BuildsSelfAndPrevNext()
+    public void ToBundle_MiddlePage_BuildsSelfPrevAndNext()
     {
         var page = new PagedResult<PractitionerReadModel>(new[] { NewReadModel() }, Total: 50, Offset: 20, Count: 10);
 
         var bundle = PractitionerFhirMapper.ToBundle(page, new(Count: 10, Offset: 20), "http://test/Practitioner");
-        PractitionerFhirMapper.AppendNextIfAny(bundle, new(Count: 10, Offset: 20), "http://test/Practitioner");
 
         bundle.Type.Should().Be("searchset");
         bundle.Total.Should().Be(50);
         bundle.Entry!.Should().HaveCount(1);
         bundle.Link!.Should().ContainSingle(l => l.Relation == "self");
-        bundle.Link!.Should().ContainSingle(l => l.Relation == "previous");
-        bundle.Link!.Should().ContainSingle(l => l.Relation == "next");
+        bundle.Link!.Should().ContainSingle(l => l.Relation == "previous"); 
+        bundle.Link!.Should().ContainSingle(l => l.Relation == "next");   
     }
 
     [Fact]
-    public void ToBundle_FirstPageWithoutNext_HasOnlySelfAndNext()
+    public void ToBundle_FirstPageWithoutPrevious_HasSelfAndNext()
     {
         var page = new PagedResult<PractitionerReadModel>(new[] { NewReadModel() }, Total: 50, Offset: 0, Count: 10);
 
         var bundle = PractitionerFhirMapper.ToBundle(page, new(Count: 10, Offset: 0), "http://test/Practitioner");
-        PractitionerFhirMapper.AppendNextIfAny(bundle, new(Count: 10, Offset: 0), "http://test/Practitioner");
 
         bundle.Link!.Should().ContainSingle(l => l.Relation == "self");
-        bundle.Link!.Should().ContainSingle(l => l.Relation == "next");
-        bundle.Link!.Should().NotContain(l => l.Relation == "previous");
+        bundle.Link!.Should().ContainSingle(l => l.Relation == "next"); 
+        bundle.Link!.Should().NotContain(l => l.Relation == "previous"); 
     }
 }

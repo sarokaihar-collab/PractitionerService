@@ -1,6 +1,4 @@
 ﻿using PractitionerService.Api.Fhir.Models;
-using PractitionerService.Application.Common.Exceptions;
-using PractitionerService.Domain.Common.Exceptions;
 
 namespace PractitionerService.Api.Fhir;
 
@@ -8,16 +6,8 @@ public static class FhirOperationOutcomeFactory
 {
     public static FhirOperationOutcome FromException(Exception ex)
     {
-        var (code, diagnostics) = ex switch
-        {
-            NotFoundException nf => (FhirConstants.IssueTypeNotFound, nf.Message),
-            GoneException g => (FhirConstants.IssueTypeDeleted, g.Message),
-            ConflictException c => (FhirConstants.IssueTypeConflict, c.Message),
-            UniqueConstraintViolationException u => (FhirConstants.IssueTypeDuplicate, u.Message),
-            FhirValidationException f => (f.FhirIssueCode, f.Message),
-            DomainException d => (FhirConstants.IssueTypeBusinessRule, d.Message),
-            _ => (FhirConstants.IssueTypeException, "Внутренняя ошибка сервера.")
-        };
+        var code = ExceptionMap.ResolveFhirCode(ex);
+        var diagnostics = ExceptionMap.Resolve(ex) is not null ? ex.Message : "Внутренняя ошибка сервера.";
 
         return new FhirOperationOutcome
         {

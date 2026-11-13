@@ -12,7 +12,9 @@ internal sealed class PractitionerRepository : IPractitionerRepository
     public Task<Practitioner?> GetByIdAsync(Guid id, CancellationToken ct = default) => _db.Practitioners.FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public Task<Practitioner?> FindBySourceEventIdAsync(string sourceEventId, CancellationToken ct = default) =>
-        _db.Practitioners.FirstOrDefaultAsync(p => p.SourceEventId == sourceEventId, ct);
+        _db.Practitioners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.SourceEventId == sourceEventId, ct);
 
     public async Task<PagedResult<Practitioner>> SearchAsync(PractitionerFilter filter, CancellationToken ct = default)
     {
@@ -24,7 +26,9 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         if (!string.IsNullOrWhiteSpace(filter.NameContains))
         {
             var pattern = $"%{filter.NameContains.Trim()}%";
-            query = query.Where(p => EF.Functions.ILike(p.FirstName, pattern) || EF.Functions.ILike(p.LastName, pattern));
+            query = query.Where(p =>
+                EF.Functions.ILike(p.FirstName, pattern) ||
+                EF.Functions.ILike(p.LastName, pattern));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.FamilyContains))
@@ -60,7 +64,7 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         if (!string.IsNullOrWhiteSpace(filter.PhoneContains))
         {
             var pattern = $"%{filter.PhoneContains.Trim()}%";
-            query = query.Where(p => EF.Functions.ILike(p.Phone, pattern));
+            query = query.Where(p => p.Phone.Contains(pattern));
         }
 
         if (filter.Active.HasValue)
@@ -78,6 +82,5 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         return new PagedResult<Practitioner>(items, total, filter.Offset, filter.Count);
     }
 
-    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default) =>
-        await _db.Practitioners.AddAsync(practitioner, ct);
+    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default) =>  await _db.Practitioners.AddAsync(practitioner, ct);
 }

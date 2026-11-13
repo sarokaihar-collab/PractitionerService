@@ -25,8 +25,8 @@ public sealed class GetPractitionerByIdQueryHandler : IRequestHandler<GetPractit
             return cached;
 
         var p = await _repo.GetByIdAsync(q.Id, ct);
-        if (p is null) throw new NotFoundException($"Practitioner {q.Id} не найден.");
-        if (p.IsDeleted) throw new GoneException($"Practitioner {q.Id} удалён.");
+        if (p is null) throw new NotFoundException($"Врач {q.Id} не найден.");
+        if (p.IsDeleted) throw new GoneException($"Врач {q.Id} удалён.");
 
         var model = p.ToReadModel();
 

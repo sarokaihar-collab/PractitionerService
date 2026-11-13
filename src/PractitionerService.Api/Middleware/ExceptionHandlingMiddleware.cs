@@ -66,14 +66,5 @@ public sealed class ExceptionHandlingMiddleware
         }
     }
 
-    private static int? MapStatus(Exception ex) => ex switch
-    {
-        FhirValidationException => StatusCodes.Status422UnprocessableEntity,
-        DomainException => StatusCodes.Status422UnprocessableEntity,
-        NotFoundException => StatusCodes.Status404NotFound,
-        GoneException => StatusCodes.Status410Gone,
-        ConflictException => StatusCodes.Status409Conflict,
-        UniqueConstraintViolationException => StatusCodes.Status409Conflict,
-        _ => null
-    };
+    private static int? MapStatus(Exception ex) => ExceptionMap.Resolve(ex)?.Status;
 }

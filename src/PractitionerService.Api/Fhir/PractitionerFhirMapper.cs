@@ -1,5 +1,6 @@
 ﻿using PractitionerService.Api.Fhir.Models;
 using PractitionerService.Application.Common.Exceptions;
+using System.Globalization;
 
 namespace PractitionerService.Api.Fhir;
 
@@ -30,9 +31,10 @@ public static class PractitionerFhirMapper
                 new() { Code = new FhirCodeableConcept { Text = m.Speciality } }
             },
             Extension = new List<FhirExtension>
-            {
-                new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = m.PlaceOfWork }
-            }
+{
+                new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = m.PlaceOfWork },
+                new() { Url = FhirConstants.CreatedAtExtensionUrl, ValueString = m.CreatedAt.ToString("O", CultureInfo.InvariantCulture) 
+            }}
         };
 
         if (!string.IsNullOrEmpty(m.SourceEventId))
@@ -47,12 +49,16 @@ public static class PractitionerFhirMapper
         return resource;
     }
 
+    /// <summary>Extracts sourceEventId from extensions (used when a POST originates from the message bus).</summary>
+    public static string? ExtractSourceEventId(FhirPractitionerResource fhir) =>
+        fhir.Extension?.FirstOrDefault(e => e.Url == FhirConstants.SourceEventIdExtensionUrl)?.ValueString;
+
     public static FhirBundle ToBundle(PagedResult<PractitionerReadModel> page, PractitionerFilter filter, string selfBaseUrl)
     {
-        var bundle = new FhirBundle
+        return new FhirBundle
         {
             Total = page.Total,
-            Link = BuildLinks(filter, selfBaseUrl),
+            Link = BuildLinks(filter, selfBaseUrl, page.Total),
             Entry = page.Items.Select(item => new FhirBundleEntry
             {
                 FullUrl = $"{selfBaseUrl.TrimEnd('/')}/{item.Id}",
@@ -60,15 +66,14 @@ public static class PractitionerFhirMapper
                 Search = new FhirBundleEntrySearch { Mode = "match" }
             }).ToList()
         };
-        return bundle;
     }
 
-    private static List<FhirBundleLink> BuildLinks(PractitionerFilter filter, string baseUrl)
+    private static List<FhirBundleLink> BuildLinks(PractitionerFilter filter, string baseUrl, int total)
     {
         var links = new List<FhirBundleLink>
-        {
-            new() { Relation = "self", Url = BuildSearchUrl(baseUrl, filter, filter.Offset) }
-        };
+            {
+                new() { Relation = "self", Url = BuildSearchUrl(baseUrl, filter, filter.Offset) }
+            };
 
         if (filter.Offset > 0)
         {
@@ -79,22 +84,16 @@ public static class PractitionerFhirMapper
             });
         }
 
-        // 'next' link is only present if there are more records beyond the current page
-        // (only the caller knows 'total'; it is appended by AppendNextIfAny below).
-        // Keeping 'next' out of BuildLinks keeps this method free of pagination math.
-        return links;
-    }
-
-    public static void AppendNextIfAny(FhirBundle bundle, PractitionerFilter filter, string baseUrl)
-    {
-        if (filter.Offset + filter.Count < (bundle.Total ?? 0))
+        if (filter.Offset + filter.Count < total)
         {
-            bundle.Link!.Add(new FhirBundleLink
+            links.Add(new FhirBundleLink
             {
                 Relation = "next",
                 Url = BuildSearchUrl(baseUrl, filter, filter.Offset + filter.Count)
             });
         }
+
+        return links;
     }
 
     private static string BuildSearchUrl(string baseUrl, PractitionerFilter f, int offset)
@@ -136,6 +135,17 @@ public static class PractitionerFhirMapper
     public static UpdatePractitionerCommand ToUpdateCommand(Guid id, FhirPractitionerResource fhir, int? expectedVersion)
     {
         ValidateCommon(fhir);
+
+        if (!string.IsNullOrEmpty(fhir.Id) &&
+            !Guid.TryParse(fhir.Id, out var bodyId))
+        {
+            throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Поле 'id' в теле не является валидным UUID: '{fhir.Id}'.");
+        }
+
+        if (Guid.TryParse(fhir.Id, out var parsedId) && parsedId != id)
+        {
+            throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Поле 'id' в теле ('{fhir.Id}') не совпадает с id в URL ('{id}').");
+        }
 
         var (firstName, lastName) = ExtractName(fhir);
         var (phone, email) = ExtractTelecom(fhir);
@@ -185,27 +195,23 @@ public static class PractitionerFhirMapper
         return (phone!, email!);
     }
 
-    private static string ExtractSpeciality(FhirPractitionerResource fhir)
+    private static string ExtractSpeciality(FhirPractitionerResource fhir) =>
+        RequireFhir(() => fhir.Qualification?.FirstOrDefault(q => !string.IsNullOrWhiteSpace(q.Code?.Text))?.Code?.Text, "qualification[0].code.text");
+
+    private static string ExtractPlaceOfWork(FhirPractitionerResource fhir) =>
+        RequireFhir(() => fhir.Extension?.FirstOrDefault(e => e.Url == FhirConstants.PlaceOfWorkExtensionUrl)?.ValueString,$"extension[{FhirConstants.PlaceOfWorkExtensionUrl}]");
+
+    /// <summary>
+    /// Requires a value to be non-empty; otherwise throws a FHIR validation error
+    /// with a reference to the field path.
+    /// </summary>
+    private static string RequireFhir(Func<string?> getValue, string fieldPath)
     {
-        var text = fhir.Qualification?.FirstOrDefault(q => !string.IsNullOrWhiteSpace(q.Code?.Text))?.Code!.Text;
-
-        if (string.IsNullOrWhiteSpace(text))
-            throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Поле 'qualification[0].code.text' обязательно.");
-
-        return text!;
-    }
-
-    private static string ExtractPlaceOfWork(FhirPractitionerResource fhir)
-    {
-        var value = fhir.Extension?.FirstOrDefault(e => e.Url == FhirConstants.PlaceOfWorkExtensionUrl)?.ValueString;
-
+        var value = getValue();
         if (string.IsNullOrWhiteSpace(value))
-            throw new FhirValidationException(FhirConstants.IssueTypeRequired, $"Поле 'extension[{FhirConstants.PlaceOfWorkExtensionUrl}]' обязательно.");
-
+            throw new FhirValidationException(
+                FhirConstants.IssueTypeRequired,
+                $"Поле '{fieldPath}' обязательно.");
         return value!;
     }
-
-    /// <summary>Extracts sourceEventId from extensions (used when a POST originates from the message bus).</summary>
-    public static string? ExtractSourceEventId(FhirPractitionerResource fhir) =>
-        fhir.Extension?.FirstOrDefault(e => e.Url == FhirConstants.SourceEventIdExtensionUrl)?.ValueString;
 }
