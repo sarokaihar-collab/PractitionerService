@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners;
 using PractitionerService.Domain.Practitioners;
 
 namespace PractitionerService.Infrastructure.Persistence.Repositories;
@@ -21,14 +23,14 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         IQueryable<Practitioner> query = _db.Practitioners.AsNoTracking();
 
         if (!filter.IncludeDeleted)
+        {
             query = query.Where(p => !p.IsDeleted);
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.NameContains))
         {
             var pattern = $"%{filter.NameContains.Trim()}%";
-            query = query.Where(p =>
-                EF.Functions.ILike(p.FirstName, pattern) ||
-                EF.Functions.ILike(p.LastName, pattern));
+            query = query.Where(p => EF.Functions.ILike(p.FirstName, pattern) || EF.Functions.ILike(p.LastName, pattern));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.FamilyContains))
@@ -68,19 +70,15 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         }
 
         if (filter.Active.HasValue)
+        {
             query = query.Where(p => p.IsActive == filter.Active.Value);
+        }
 
-        var total = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
-            .Skip(filter.Offset)
-            .Take(filter.Count)
-            .ToListAsync(ct);
+        var total = await query.CountAsync(ct).ConfigureAwait(false);
+        var items = await query.OrderBy(p => p.LastName).ThenBy(p => p.FirstName).Skip(filter.Offset).Take(filter.Count).ToListAsync(ct).ConfigureAwait(false);
 
         return new PagedResult<Practitioner>(items, total, filter.Offset, filter.Count);
     }
 
-    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default) =>  await _db.Practitioners.AddAsync(practitioner, ct);
+    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default) => await _db.Practitioners.AddAsync(practitioner, ct).ConfigureAwait(false);
 }

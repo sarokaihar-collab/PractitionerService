@@ -1,4 +1,6 @@
-﻿public interface IDateTimeProvider
+namespace PractitionerService.Application.Common;
+
+public interface IDateTimeProvider
 {
     DateTime UtcNow { get; }
 }

@@ -1,11 +1,12 @@
-﻿using MediatR;
+using MediatR;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Exceptions;
 
 namespace PractitionerService.Application.Practitioners.Queries;
 
 public sealed class GetPractitionerByIdQueryHandler : IRequestHandler<GetPractitionerByIdQuery, PractitionerReadModel>
 {
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
 
     private readonly IPractitionerRepository _repo;
     private readonly ICacheService _cache;
@@ -16,21 +17,30 @@ public sealed class GetPractitionerByIdQueryHandler : IRequestHandler<GetPractit
         _cache = cache;
     }
 
-    public async Task<PractitionerReadModel> Handle(GetPractitionerByIdQuery q, CancellationToken ct)
+    public async Task<PractitionerReadModel> Handle(GetPractitionerByIdQuery request, CancellationToken cancellationToken)
     {
-        var cacheKey = CacheKeys.PractitionerById(q.Id);
+        var cacheKey = CacheKeys.PractitionerById(request.Id);
 
-        var cached = await _cache.GetAsync<PractitionerReadModel>(cacheKey, ct);
-        if (cached is not null) 
+        var cached = await _cache.GetAsync<PractitionerReadModel>(cacheKey, cancellationToken).ConfigureAwait(false);
+        if (cached is not null)
+        {
             return cached;
+        }
 
-        var p = await _repo.GetByIdAsync(q.Id, ct);
-        if (p is null) throw new NotFoundException($"Врач {q.Id} не найден.");
-        if (p.IsDeleted) throw new GoneException($"Врач {q.Id} удалён.");
+        var p = await _repo.GetByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        if (p is null)
+        {
+            throw new NotFoundException($"Врач {request.Id} не найден.");
+        }
+
+        if (p.IsDeleted)
+        {
+            throw new GoneException($"Врач {request.Id} удалён.");
+        }
 
         var model = p.ToReadModel();
 
-        await _cache.SetAsync(cacheKey, model, CacheTtl, ct);
+        await _cache.SetAsync(cacheKey, model, _cacheTtl, cancellationToken).ConfigureAwait(false);
         return model;
     }
 }

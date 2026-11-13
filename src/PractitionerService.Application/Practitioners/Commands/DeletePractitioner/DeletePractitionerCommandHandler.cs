@@ -1,5 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Exceptions;
+
+namespace PractitionerService.Application.Practitioners;
 
 public sealed class DeletePractitionerCommandHandler : IRequestHandler<DeletePractitionerCommand, Unit>
 {
@@ -16,16 +19,23 @@ public sealed class DeletePractitionerCommandHandler : IRequestHandler<DeletePra
         _cache = cache;
     }
 
-    public async Task<Unit> Handle(DeletePractitionerCommand cmd, CancellationToken ct)
+    public async Task<Unit> Handle(DeletePractitionerCommand request, CancellationToken cancellationToken)
     {
-        var p = await _repositorysitory.GetByIdAsync(cmd.Id, ct);
-        if (p is null) throw new NotFoundException($"Врач {cmd.Id} не найден.");
-        if (p.IsDeleted) throw new GoneException($"Врач {cmd.Id} уже удалён.");
+        var p = await _repositorysitory.GetByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        if (p is null)
+        {
+            throw new NotFoundException($"Врач {request.Id} не найден.");
+        }
+
+        if (p.IsDeleted)
+        {
+            throw new GoneException($"Врач {request.Id} уже удалён.");
+        }
 
         p.MarkAsDeleted(_clock.UtcNow);
-        await _unitOfWork.SaveChangesAsync(ct);
+        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        await _cache.RemoveAsync(CacheKeys.PractitionerById(cmd.Id), ct);
+        await _cache.RemoveAsync(CacheKeys.PractitionerById(request.Id), cancellationToken).ConfigureAwait(false);
 
         return Unit.Value;
     }

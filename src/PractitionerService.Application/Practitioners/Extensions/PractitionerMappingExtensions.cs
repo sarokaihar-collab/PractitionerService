@@ -1,4 +1,6 @@
-﻿using PractitionerService.Domain.Practitioners;
+using PractitionerService.Domain.Practitioners;
+
+namespace PractitionerService.Application.Practitioners;
 
 public static class PractitionerMappingExtensions
 {
@@ -6,7 +8,5 @@ public static class PractitionerMappingExtensions
     /// Projects a domain entity into the read model used by queries.
     /// </summary>
     public static PractitionerReadModel ToReadModel(this Practitioner p) => new(
-        p.Id, p.FirstName, p.LastName, p.Phone, p.Speciality,
-        p.PlaceOfWork, p.Email, p.IsActive,
-        p.CreatedAt, p.UpdatedAt, p.Version, p.SourceEventId);
+        p.Id, p.FirstName, p.LastName, p.Phone, p.Speciality, p.PlaceOfWork, p.Email, p.IsActive, p.CreatedAt, p.UpdatedAt, p.Version, p.SourceEventId);
 }

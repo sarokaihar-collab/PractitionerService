@@ -1,4 +1,7 @@
-﻿using PractitionerService.Domain.Practitioners;
+using PractitionerService.Application.Common;
+using PractitionerService.Domain.Practitioners;
+
+namespace PractitionerService.Application.Practitioners;
 
 public interface IPractitionerRepository
 {

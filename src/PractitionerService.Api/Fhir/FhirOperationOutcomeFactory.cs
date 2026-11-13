@@ -1,4 +1,4 @@
-﻿using PractitionerService.Api.Fhir.Models;
+using PractitionerService.Api.Fhir.Models;
 
 namespace PractitionerService.Api.Fhir;
 
@@ -7,7 +7,7 @@ public static class FhirOperationOutcomeFactory
     public static FhirOperationOutcome FromException(Exception ex)
     {
         var code = ExceptionMap.ResolveFhirCode(ex);
-        var diagnostics = ExceptionMap.Resolve(ex) is not null ? ex.Message : "Внутренняя ошибка сервера.";
+        var diagnostics = ExceptionMap.Resolve(ex) is not null ? ex?.Message : "Внутренняя ошибка сервера.";
 
         return new FhirOperationOutcome
         {
@@ -17,9 +17,9 @@ public static class FhirOperationOutcomeFactory
                 {
                     Severity = FhirConstants.SeverityError,
                     Code = code,
-                    Diagnostics = diagnostics
-                }
-            }
+                    Diagnostics = diagnostics,
+                },
+            },
         };
     }
 
@@ -34,10 +34,11 @@ public static class FhirOperationOutcomeFactory
                 {
                     Severity = FhirConstants.SeverityError,
                     Code = FhirConstants.IssueTypeStructure,
-                    Diagnostics = $"Параметр '{field}': {message}"
+                    Diagnostics = $"Параметр '{field}': {message}",
                 });
             }
         }
+
         return outcome;
     }
 }

@@ -1,5 +1,7 @@
-﻿using PractitionerService.Api.Fhir.Models;
 using System.Text.Json.Serialization;
+using PractitionerService.Api.Fhir.Models;
+
+namespace PractitionerService.Api.Fhir.Models;
 
 /// <summary>
 /// FHIR-ресурс OperationOutcome. Возвращается при ошибках вместо ProblemDetails.

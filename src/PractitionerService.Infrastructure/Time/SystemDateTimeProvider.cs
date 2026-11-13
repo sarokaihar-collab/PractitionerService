@@ -1,4 +1,6 @@
-﻿namespace PractitionerService.Infrastructure.Time;
+using PractitionerService.Application.Common;
+
+namespace PractitionerService.Infrastructure.Time;
 
 internal sealed class SystemDateTimeProvider : IDateTimeProvider
 {

@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    Shared MSBuild settings for all projects in the solution.
+    Automatically picked up by the .NET SDK for any project below this directory.
+    No changes needed in individual .csproj files for analyzer setup.
+  -->
+
+  <PropertyGroup>
+    <!-- Avoid NuGet fallback folders inherited from a Windows VS install -->
+    <RestoreFallbackFolders>clear</RestoreFallbackFolders>
+  </PropertyGroup>
+
+  <!-- Analyzers -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Built-in Microsoft analyzers (CA rules) — included with .NET SDK, pinned here for reproducibility -->
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.*" />
+
+    <!-- EF Core-specific rules: EF1001 (internal API), EF1002 (SQL injection in raw queries) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="10.*" />
+
+    <!-- Third-party analyzers (PrivateAssets=all keeps them out of transitive deps) -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="Roslynator.Analyzers" Version="4.*" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" Version="2.*" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.*" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

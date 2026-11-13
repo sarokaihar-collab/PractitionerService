@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners;
 using PractitionerService.Infrastructure.Caching;
 using PractitionerService.Infrastructure.Messaging;
 using PractitionerService.Infrastructure.Persistence;
@@ -26,7 +27,7 @@ public static class DependencyInjection
         services.AddScoped<PractitionerSeeder>();
         services.AddScoped<IDbInitializer, DbInitializer>();
 
-        var redisConfig = configuration.GetSection("Redis")["Configuration"] ?? throw new InvalidOperationException("Redis:Configuration не задан.");
+        var redisConfig = configuration?.GetSection("Redis")["Configuration"] ?? throw new InvalidOperationException("Redis:Configuration не задан.");
 
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConfig));
 

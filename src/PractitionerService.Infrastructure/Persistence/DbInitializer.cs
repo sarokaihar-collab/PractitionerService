@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace PractitionerService.Infrastructure.Persistence;
@@ -14,10 +14,7 @@ internal sealed class DbInitializer : IDbInitializer
     private readonly PractitionerSeeder _seeder;
     private readonly ILogger<DbInitializer> _logger;
 
-    public DbInitializer(
-        PractitionerDbContext db,
-        PractitionerSeeder seeder,
-        ILogger<DbInitializer> logger)
+    public DbInitializer(PractitionerDbContext db, PractitionerSeeder seeder, ILogger<DbInitializer> logger)
     {
         _db = db;
         _seeder = seeder;
@@ -27,9 +24,9 @@ internal sealed class DbInitializer : IDbInitializer
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         _logger.LogInformation("Применяем миграции БД...");
-        await _db.Database.MigrateAsync(ct);
+        await _db.Database.MigrateAsync(ct).ConfigureAwait(false);
         _logger.LogInformation("Миграции применены.");
 
-        await _seeder.SeedAsync(ct);
+        await _seeder.SeedAsync(ct).ConfigureAwait(false);
     }
 }

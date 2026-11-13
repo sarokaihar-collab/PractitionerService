@@ -1,5 +1,5 @@
-﻿using PractitionerService.Domain.Common.Exceptions;
 using System.Net.Mail;
+using PractitionerService.Domain.Common.Exceptions;
 
 namespace PractitionerService.Domain.Practitioners;
 
@@ -9,6 +9,10 @@ namespace PractitionerService.Domain.Practitioners;
 /// </summary>
 public sealed class Practitioner
 {
+    private Practitioner()
+    {
+    }
+
     public Guid Id { get; private set; }
     public string FirstName { get; private set; } = null!;
     public string LastName { get; private set; } = null!;
@@ -20,15 +24,13 @@ public sealed class Practitioner
 
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
-    public int Version { get; private set; }          // optimistic concurrency
-    public bool IsDeleted { get; private set; }       // soft delete
+    public int Version { get; private set; } // optimistic concurrency
+    public bool IsDeleted { get; private set; } // soft delete
     public string? SourceEventId { get; private set; } // import idempotency
-
-    private Practitioner() { }
 
     public static Practitioner Create(string firstName, string lastName, string phone, string speciality, string placeOfWork, string email, bool isActive, DateTime now, string? sourceEventId = null)
     {
-        Validate(firstName, lastName, phone, speciality, placeOfWork, email);
+        Validate(firstName, lastName, speciality, placeOfWork, email);
 
         return new Practitioner
         {
@@ -44,14 +46,14 @@ public sealed class Practitioner
             UpdatedAt = now,
             Version = 1,
             IsDeleted = false,
-            SourceEventId = string.IsNullOrWhiteSpace(sourceEventId) ? null : sourceEventId
+            SourceEventId = string.IsNullOrWhiteSpace(sourceEventId) ? null : sourceEventId,
         };
     }
 
     public void Update(string firstName, string lastName, string phone, string speciality, string placeOfWork, string email, bool isActive, DateTime now)
     {
         EnsureNotDeleted();
-        Validate(firstName, lastName, phone, speciality, placeOfWork, email);
+        Validate(firstName, lastName, speciality, placeOfWork, email);
 
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
@@ -66,7 +68,10 @@ public sealed class Practitioner
 
     public void MarkAsDeleted(DateTime now)
     {
-        if (IsDeleted) return;
+        if (IsDeleted)
+        {
+            return;
+        }
 
         IsDeleted = true;
         IsActive = false;
@@ -74,7 +79,7 @@ public sealed class Practitioner
         Version++;
     }
 
-    private static void Validate(string firstName, string lastName, string phone, string speciality, string placeOfWork, string email)
+    private static void Validate(string firstName, string lastName, string speciality, string placeOfWork, string email)
     {
         RequireNonEmpty(firstName, nameof(firstName), maxLen: 100);
         RequireNonEmpty(lastName, nameof(lastName), maxLen: 100);
@@ -83,26 +88,27 @@ public sealed class Practitioner
         RequireNonEmpty(email, nameof(email), maxLen: 254);
 
         if (!LooksLikeEmail(email))
+        {
             throw new DomainException($"Email '{email}' имеет некорректный формат.");
-    }
-
-    private void EnsureNotDeleted()
-    {
-        if (IsDeleted)
-            throw new DomainException($"Врач {Id} удалён и не может быть изменён.");
+        }
     }
 
     private static void RequireNonEmpty(string value, string field, int maxLen)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             throw new DomainException($"Поле '{field}' обязательно.");
+        }
+
         if (value.Length > maxLen)
+        {
             throw new DomainException($"Поле '{field}' длиннее {maxLen} символов.");
+        }
     }
 
     private static bool LooksLikeEmail(string value)
     {
-        return MailAddress.TryCreate(value, out var addr) && addr.Address == value;
+        return MailAddress.TryCreate(value, out var addr) && string.Equals(addr.Address, value, StringComparison.Ordinal);
     }
 
     private static string NormalizePhone(string phone)
@@ -112,8 +118,18 @@ public sealed class Practitioner
         var digits = new string(trimmed.Where(char.IsDigit).ToArray());
 
         if (string.IsNullOrEmpty(digits))
+        {
             throw new DomainException($"Поле 'phone' не содержит цифр.");
+        }
 
         return hasPlus ? "+" + digits : digits;
+    }
+
+    private void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+        {
+            throw new DomainException($"Врач {Id} удалён и не может быть изменён.");
+        }
     }
 }

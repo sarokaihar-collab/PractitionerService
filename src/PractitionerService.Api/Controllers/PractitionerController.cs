@@ -1,11 +1,11 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using PractitionerService.Api.Controllers.Contracts;
 using PractitionerService.Api.Fhir;
 using PractitionerService.Api.Fhir.Models;
 using PractitionerService.Api.Http;
 using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Practitioners;
 
 namespace PractitionerService.Api.Controllers;
 
@@ -47,15 +47,17 @@ public sealed class PractitionerController : ControllerBase
             if (!string.IsNullOrEmpty(key))
             {
                 if (key.Length > 200)
+                {
                     throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Заголовок Idempotency-Key не должен превышать 200 символов (передано {key.Length}).");
+                }
 
                 sourceEventId = $"idem:{key}";
             }
         }
 
         var command = PractitionerFhirMapper.ToCreateCommand(resource, sourceEventId);
-        var result = await _mediator.Send(command, ct);
-        var readModel = await _mediator.Send(new GetPractitionerByIdQuery(result.Id), ct);
+        var result = await _mediator.Send(command, ct).ConfigureAwait(false);
+        var readModel = await _mediator.Send(new GetPractitionerByIdQuery(result.Id), ct).ConfigureAwait(false);
 
         var location = $"{Request.Scheme}://{Request.Host}/Practitioner/{result.Id}";
         Response.Headers.Location = location;
@@ -78,7 +80,7 @@ public sealed class PractitionerController : ControllerBase
     [ProducesResponseType(typeof(FhirOperationOutcome), StatusCodes.Status410Gone)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var dto = await _mediator.Send(new GetPractitionerByIdQuery(id), ct);
+        var dto = await _mediator.Send(new GetPractitionerByIdQuery(id), ct).ConfigureAwait(false);
         Response.SetETag(dto.Version);
         return Ok(PractitionerFhirMapper.ToFhir(dto));
     }
@@ -110,8 +112,8 @@ public sealed class PractitionerController : ControllerBase
         var ifMatch = Request.Headers.IfMatch.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(ifMatch))
         {
-            var raw = ifMatch.Replace("W/", "", StringComparison.Ordinal).Trim().Trim('"', ' ');
-            if (raw == "*")
+            var raw = ifMatch.Replace("W/", string.Empty, StringComparison.Ordinal).Trim().Trim('"', ' ');
+            if (string.Equals(raw, "*", StringComparison.OrdinalIgnoreCase))
             {
                 // "Update if exists" — existence checked by the handler (404/410).
                 // No version check — this is the documented FHIR semantics.
@@ -127,8 +129,8 @@ public sealed class PractitionerController : ControllerBase
         }
 
         var command = PractitionerFhirMapper.ToUpdateCommand(id, resource, expectedVersion);
-        var result = await _mediator.Send(command, ct);
-        var readModel = await _mediator.Send(new GetPractitionerByIdQuery(result.Id), ct);
+        var result = await _mediator.Send(command, ct).ConfigureAwait(false);
+        var readModel = await _mediator.Send(new GetPractitionerByIdQuery(result.Id), ct).ConfigureAwait(false);
 
         Response.SetETag(result.Version);
         return Ok(PractitionerFhirMapper.ToFhir(readModel));
@@ -148,7 +150,7 @@ public sealed class PractitionerController : ControllerBase
     [ProducesResponseType(typeof(FhirOperationOutcome), StatusCodes.Status410Gone)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new DeletePractitionerCommand(id), ct);
+        await _mediator.Send(new DeletePractitionerCommand(id), ct).ConfigureAwait(false);
         return NoContent();
     }
 
@@ -167,19 +169,19 @@ public sealed class PractitionerController : ControllerBase
     public async Task<IActionResult> Search([FromQuery] PractitionerSearchQuery query, CancellationToken ct)
     {
         var filter = new PractitionerFilter(
-            NameContains: query.Name,
-            FamilyContains: query.Family,
-            GivenContains: query.Given,
-            SpecialityContains: query.Specialty,
-            PlaceOfWorkContains: query.PlaceOfWork,
-            EmailEquals: query.Email,
-            PhoneContains: query.Phone,
-            Active: query.Active,
-            Offset: query.Offset ?? 0,
-            Count: query.Count ?? 20,
-            IncludeDeleted: query.IncludeDeleted ?? false);
+            NameContains: query?.Name,
+            FamilyContains: query?.Family,
+            GivenContains: query?.Given,
+            SpecialityContains: query?.Specialty,
+            PlaceOfWorkContains: query?.PlaceOfWork,
+            EmailEquals: query?.Email,
+            PhoneContains: query?.Phone,
+            Active: query?.Active,
+            Offset: query?.Offset ?? 0,
+            Count: query?.Count ?? 20,
+            IncludeDeleted: query?.IncludeDeleted ?? false);
 
-        var page = await _mediator.Send(new SearchPractitionersQuery(filter), ct);
+        var page = await _mediator.Send(new SearchPractitionersQuery(filter), ct).ConfigureAwait(false);
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}/Practitioner";
         var normalizedFilter = filter with { Offset = page.Offset, Count = page.Count };

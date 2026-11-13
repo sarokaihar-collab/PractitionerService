@@ -1,4 +1,6 @@
-﻿public sealed record PractitionerReadModel(
+namespace PractitionerService.Application.Practitioners;
+
+public sealed record PractitionerReadModel(
     Guid Id,
     string FirstName,
     string LastName,

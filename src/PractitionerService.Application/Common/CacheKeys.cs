@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Common;
+namespace PractitionerService.Application.Common;
 
 public static class CacheKeys
 {

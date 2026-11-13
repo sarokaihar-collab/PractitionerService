@@ -1,4 +1,4 @@
-﻿using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Common.Exceptions;
 
 namespace PractitionerService.Api.Fhir;
@@ -9,7 +9,7 @@ namespace PractitionerService.Api.Fhir;
 /// </summary>
 public static class ExceptionMap
 {
-    private static readonly Dictionary<Type, (int Status, string FhirCode)> Map = new()
+    private static readonly Dictionary<Type, (int Status, string FhirCode)> _map = new()
     {
         [typeof(NotFoundException)] = (404, FhirConstants.IssueTypeNotFound),
         [typeof(GoneException)] = (410, FhirConstants.IssueTypeDeleted),
@@ -23,7 +23,7 @@ public static class ExceptionMap
     /// Returns HTTP status and FHIR code for the given exception, or null if unknown.
     /// </summary>
     public static (int Status, string FhirCode)? Resolve(Exception ex)
-        => Map.TryGetValue(ex.GetType(), out var v) ? v : null;
+        => _map.TryGetValue(ex.GetType(), out var v) ? v : null;
 
     /// <summary>
     /// Resolves the FHIR issue code. For <see cref="FhirValidationException"/>,

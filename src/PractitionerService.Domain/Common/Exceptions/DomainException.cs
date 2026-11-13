@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Domain.Common.Exceptions;
+namespace PractitionerService.Domain.Common.Exceptions;
 
 /// <summary>
 /// Violation of a domain business invariant.
@@ -6,5 +6,8 @@
 /// </summary>
 public sealed class DomainException : Exception
 {
-    public DomainException(string message) : base(message) { }
+    public DomainException(string message)
+        : base(message)
+    {
+    }
 }

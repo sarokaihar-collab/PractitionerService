@@ -1,7 +1,9 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Practitioners;
 using PractitionerService.Application.Practitioners.Queries;
 using PractitionerService.Domain.Practitioners;
 
@@ -9,7 +11,7 @@ namespace PractitionerService.UnitTests.Application;
 
 public sealed class PractitionerHandlersTests
 {
-    private static readonly DateTime Now = new(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime _now = new(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private readonly IPractitionerRepository _repository = Substitute.For<IPractitionerRepository>();
     private readonly ICacheService _cache = Substitute.For<ICacheService>();
@@ -18,23 +20,19 @@ public sealed class PractitionerHandlersTests
 
     public PractitionerHandlersTests()
     {
-        _clock.UtcNow.Returns(Now);
+        _clock.UtcNow.Returns(_now);
     }
 
-    // ==== CreatePractitionerCommandHandler ====
-
     [Fact]
-    public async Task Create_WithExistingSourceEventId_ReturnsExistingWithoutSaving()
+    public async Task CreateWithExistingSourceEventIdReturnsExistingWithoutSaving()
     {
-        var existing = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00",
-            "Кардиолог", "ГКБ №1", "i@example.ru", true, Now, "evt-1");
+        var existing = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now, "evt-1");
 
         _repository.FindBySourceEventIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(existing);
 
         var handler = new CreatePractitionerCommandHandler(
             _repository, _unitOfWork, _clock, NullLogger<CreatePractitionerCommandHandler>.Instance);
-        var cmd = new CreatePractitionerCommand("Другой", "Врач", "+7-900-000-00-99",
-            "Хирург", "ГКБ №9", "other@example.ru", true, "evt-1");
+        var cmd = new CreatePractitionerCommand("Другой", "Врач", "+7-900-000-00-99", "Хирург", "ГКБ №9", "other@example.ru", true, "evt-1");
 
         var result = await handler.Handle(cmd, default);
 
@@ -44,7 +42,7 @@ public sealed class PractitionerHandlersTests
     }
 
     [Fact]
-    public async Task Create_WithoutSourceEventId_CreatesNew()
+    public async Task CreateWithoutSourceEventIdCreatesNew()
     {
         Practitioner? captured = null;
         _repository.When(r => r.AddAsync(Arg.Any<Practitioner>(), Arg.Any<CancellationToken>())).Do(ci => captured = ci.Arg<Practitioner>());
@@ -58,17 +56,15 @@ public sealed class PractitionerHandlersTests
         result.Version.Should().Be(1);
 
         captured.Should().NotBeNull();
-        captured!.IsActive.Should().BeTrue();   // null → true (FHIR-дефолт)
+        captured.IsActive.Should().BeTrue();   // null → true (FHIR-дефолт)
         captured.Email.Should().Be("i@example.ru");
 
         await _repository.Received(1).AddAsync(Arg.Any<Practitioner>(), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
-    // ==== GetPractitionerByIdQueryHandler ====
-
     [Fact]
-    public async Task GetById_NotFound_ThrowsNotFoundException()
+    public async Task GetByIdNotFoundThrowsNotFoundException()
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Practitioner?)null);
         var handler = new GetPractitionerByIdQueryHandler(_repository, _cache);
@@ -79,11 +75,10 @@ public sealed class PractitionerHandlersTests
     }
 
     [Fact]
-    public async Task GetById_Deleted_ThrowsGoneException()
+    public async Task GetByIdDeletedThrowsGoneException()
     {
-        var p = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00",
-            "Кардиолог", "ГКБ №1", "i@example.ru", true, Now);
-        p.MarkAsDeleted(Now);
+        var p = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now);
+        p.MarkAsDeleted(_now);
         _repository.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
         var handler = new GetPractitionerByIdQueryHandler(_repository, _cache);
@@ -92,18 +87,14 @@ public sealed class PractitionerHandlersTests
         await act.Should().ThrowAsync<GoneException>();
     }
 
-    // ==== UpdatePractitionerCommandHandler ====
-
     [Fact]
-    public async Task Update_WithWrongExpectedVersion_ThrowsConflictException()
+    public async Task UpdateWithWrongExpectedVersionThrowsConflictException()
     {
-        var p = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00",
-            "Кардиолог", "ГКБ №1", "i@example.ru", true, Now);   // version = 1
+        var p = Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now);   // version = 1
         _repository.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
         var handler = new UpdatePractitionerCommandHandler(_repository, _unitOfWork, _clock, _cache);
-        var cmd = new UpdatePractitionerCommand(p.Id, "Пётр", "Петров", "+7-900-000-00-01",
-            "Терапевт", "ГКБ №2", "p@example.ru", true, ExpectedVersion: 99);
+        var cmd = new UpdatePractitionerCommand(p.Id, "Пётр", "Петров", "+7-900-000-00-01", "Терапевт", "ГКБ №2", "p@example.ru", true, ExpectedVersion: 99);
 
         var act = () => handler.Handle(cmd, default);
 

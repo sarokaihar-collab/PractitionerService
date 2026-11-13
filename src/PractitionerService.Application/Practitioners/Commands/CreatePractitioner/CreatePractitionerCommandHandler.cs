@@ -1,7 +1,10 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
+using PractitionerService.Application.Common;
 using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Practitioners;
+
+namespace PractitionerService.Application.Practitioners;
 
 public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePractitionerCommand, PractitionerCommandResult>
 {
@@ -18,35 +21,38 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
         _logger = logger;
     }
 
-    public async Task<PractitionerCommandResult> Handle(CreatePractitionerCommand cmd, CancellationToken ct)
+    public async Task<PractitionerCommandResult> Handle(CreatePractitionerCommand request, CancellationToken cancellationToken)
     {
         // Idempotency: if SourceEventId (Idempotency-Key) has already been processed, return the existing entity.
-        if (!string.IsNullOrWhiteSpace(cmd.SourceEventId))
+        if (!string.IsNullOrWhiteSpace(request.SourceEventId))
         {
-            var existing = await _repository.FindBySourceEventIdAsync(cmd.SourceEventId, ct);
+            var existing = await _repository.FindBySourceEventIdAsync(request.SourceEventId, cancellationToken).ConfigureAwait(false);
             if (existing is not null)
             {
-                _logger.LogInformation("Idempotent replay for SourceEventId={SourceEventId}, returning practitioner {Id}", cmd.SourceEventId, existing.Id);
+                _logger.LogInformation("Idempotent replay for SourceEventId={SourceEventId}, returning practitioner {Id}", request.SourceEventId, existing.Id);
                 return new PractitionerCommandResult(existing.Id, existing.Version);
             }
         }
 
-        var practitioner = Practitioner.Create(cmd.FirstName, cmd.LastName, cmd.Phone, cmd.Speciality, cmd.PlaceOfWork, cmd.Email, cmd.IsActive ?? true, _clock.UtcNow, cmd.SourceEventId);
+        var practitioner = Practitioner.Create(request.FirstName, request.LastName, request.Phone, request.Speciality, request.PlaceOfWork, request.Email, request.IsActive ?? true, _clock.UtcNow, request.SourceEventId);
 
-        await _repository.AddAsync(practitioner, ct);
+        await _repository.AddAsync(practitioner, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (UniqueConstraintViolationException ex) when (ex.Field == UniqueConstraintField.SourceEventId)
         {
             // Detach the failed attempt so it does not retry on any subsequent SaveChanges
             _unitOfWork.Detach(practitioner);
 
-            var existing = await _repository.FindBySourceEventIdAsync(cmd.SourceEventId!, ct);
-            if (existing is not null) 
+            var existing = await _repository.FindBySourceEventIdAsync(request.SourceEventId!, cancellationToken).ConfigureAwait(false);
+            if (existing is not null)
+            {
                 return new PractitionerCommandResult(existing.Id, existing.Version);  // или return (Id, Version)
+            }
+
             throw;
         }
 

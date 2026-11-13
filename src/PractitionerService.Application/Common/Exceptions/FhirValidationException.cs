@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Common.Exceptions;
+namespace PractitionerService.Application.Common.Exceptions;
 
 /// <summary>
 /// Violation of the FHIR resource structure (required fields, format).
@@ -6,10 +6,11 @@
 /// </summary>
 public sealed class FhirValidationException : Exception
 {
-    public string FhirIssueCode { get; }
-
-    public FhirValidationException(string fhirIssueCode, string message) : base(message)
+    public FhirValidationException(string fhirIssueCode, string message)
+        : base(message)
     {
         FhirIssueCode = fhirIssueCode;
     }
+
+    public string FhirIssueCode { get; }
 }

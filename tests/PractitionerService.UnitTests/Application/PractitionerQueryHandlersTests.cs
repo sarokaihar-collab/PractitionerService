@@ -1,7 +1,8 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using NSubstitute;
 using PractitionerService.Application.Common;
 using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Practitioners;
 using PractitionerService.Application.Practitioners.Queries;
 using PractitionerService.Domain.Practitioners;
 
@@ -9,19 +10,13 @@ namespace PractitionerService.UnitTests.Application;
 
 public sealed class PractitionerQueryHandlersTests
 {
-    private static readonly DateTime Now = new(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime _now = new(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private readonly IPractitionerRepository _repo = Substitute.For<IPractitionerRepository>();
     private readonly ICacheService _cache = Substitute.For<ICacheService>();
 
-    private static Practitioner NewPractitioner(string email = "i@example.ru") =>
-        Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00",
-            "Кардиолог", "ГКБ №1", email, true, Now);
-
-    // ==== GetPractitionerByIdQueryHandler ====
-
     [Fact]
-    public async Task GetById_CacheMiss_LoadsFromRepoAndCaches()
+    public async Task GetByIdCacheMissLoadsFromRepoAndCaches()
     {
         var p = NewPractitioner();
         _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
@@ -42,10 +37,10 @@ public sealed class PractitionerQueryHandlersTests
     }
 
     [Fact]
-    public async Task GetById_CacheHit_DoesNotQueryRepo()
+    public async Task GetByIdCacheHitDoesNotQueryRepo()
     {
         var id = Guid.NewGuid();
-        var cached = new PractitionerReadModel(id, "Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, Now, Now, 1, null);
+        var cached = new PractitionerReadModel(id, "Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now, _now, 1, null);
 
         _cache.GetAsync<PractitionerReadModel>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(cached);
 
@@ -56,10 +51,8 @@ public sealed class PractitionerQueryHandlersTests
         await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    // ==== SearchPractitionersQueryHandler ====
-
     [Fact]
-    public async Task Search_ClampsCountToMaxAndOffsetToNonNegative()
+    public async Task SearchClampsCountToMaxAndOffsetToNonNegative()
     {
         _repo.SearchAsync(Arg.Any<PractitionerFilter>(), Arg.Any<CancellationToken>())
              .Returns(new PagedResult<Practitioner>(
@@ -72,29 +65,25 @@ public sealed class PractitionerQueryHandlersTests
     }
 
     [Fact]
-    public async Task Search_ZeroCount_UsesDefault()
+    public async Task SearchZeroCountUsesDefault()
     {
         _repo.SearchAsync(Arg.Any<PractitionerFilter>(), Arg.Any<CancellationToken>()).Returns(new PagedResult<Practitioner>(Array.Empty<Practitioner>(), 0, 0, 20));
 
         var handler = new SearchPractitionersQueryHandler(_repo);
         await handler.Handle(new SearchPractitionersQuery(new PractitionerFilter(Count: 0)), default);
 
-        await _repo.Received(1).SearchAsync(
-            Arg.Is<PractitionerFilter>(f => f.Count == 20),
-            Arg.Any<CancellationToken>());
+        await _repo.Received(1).SearchAsync(Arg.Is<PractitionerFilter>(f => f.Count == 20), Arg.Any<CancellationToken>());
     }
 
-    // ==== DeletePractitionerCommandHandler ====
-
     [Fact]
-    public async Task Delete_Success_MarksDeletedAndInvalidatesCache()
+    public async Task DeleteSuccessMarksDeletedAndInvalidatesCache()
     {
         var p = NewPractitioner();
         _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
         var uow = Substitute.For<IUnitOfWork>();
         var clock = Substitute.For<IDateTimeProvider>();
-        clock.UtcNow.Returns(Now.AddHours(1));
+        clock.UtcNow.Returns(_now.AddHours(1));
 
         var handler = new DeletePractitionerCommandHandler(_repo, uow, clock, _cache);
         await handler.Handle(new DeletePractitionerCommand(p.Id), default);
@@ -105,10 +94,10 @@ public sealed class PractitionerQueryHandlersTests
     }
 
     [Fact]
-    public async Task Delete_AlreadyDeleted_ThrowsGoneException()
+    public async Task DeleteAlreadyDeletedThrowsGoneException()
     {
         var p = NewPractitioner();
-        p.MarkAsDeleted(Now);
+        p.MarkAsDeleted(_now);
         _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
         var uow = Substitute.For<IUnitOfWork>();
@@ -122,7 +111,7 @@ public sealed class PractitionerQueryHandlersTests
     }
 
     [Fact]
-    public async Task Delete_NotFound_ThrowsNotFoundException()
+    public async Task DeleteNotFoundThrowsNotFoundException()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Practitioner?)null);
 
@@ -131,4 +120,6 @@ public sealed class PractitionerQueryHandlersTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    private static Practitioner NewPractitioner(string email = "i@example.ru") => Practitioner.Create("Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", email, true, _now);
 }

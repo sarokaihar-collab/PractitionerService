@@ -1,14 +1,15 @@
+using System.Reflection;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using PractitionerService.Api.Fhir;
 using PractitionerService.Api.Middleware;
+using PractitionerService.Application;
 using PractitionerService.Infrastructure;
 using PractitionerService.Infrastructure.Persistence;
-using System.Reflection;
-using System.Text.Encodings.Web;
-using System.Text.Unicode;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,9 +30,14 @@ builder.Services.AddHealthChecks()
 builder.Services.Configure<MvcOptions>(options =>
 {
     foreach (var f in options.InputFormatters.OfType<SystemTextJsonInputFormatter>())
+    {
         f.SupportedMediaTypes.Add(FhirConstants.MediaTypeFhirJson);
+    }
+
     foreach (var f in options.OutputFormatters.OfType<SystemTextJsonOutputFormatter>())
+    {
         f.SupportedMediaTypes.Add(FhirConstants.MediaTypeFhirJson);
+    }
 });
 
 // Model binding errors -> OperationOutcome (instead of ProblemDetails)
@@ -41,12 +47,12 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     {
         var errors = context.ModelState
             .Where(kv => kv.Value?.Errors.Count > 0)
-            .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+            .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray(), StringComparer.Ordinal);
 
         var outcome = FhirOperationOutcomeFactory.FromModelState(errors);
         return new BadRequestObjectResult(outcome)
         {
-            ContentTypes = { FhirConstants.MediaTypeFhirJson }
+            ContentTypes = { FhirConstants.MediaTypeFhirJson },
         };
     };
 });
@@ -62,13 +68,15 @@ builder.Services.AddSwaggerGen(options =>
             "Backend-сервис справочника врачей. " +
             "Реализует FHIR R5-совместимый REST API для ресурса Practitioner. " +
             "Принимает `application/fhir+json` и `application/json`, отдаёт `application/fhir+json`. " +
-            "Ошибки возвращаются в формате `OperationOutcome`."
+            "Ошибки возвращаются в формате `OperationOutcome`.",
     });
 
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
+    {
         options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
 });
 
 var app = builder.Build();
@@ -76,7 +84,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var initializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-    await initializer.InitializeAsync();
+    await initializer.InitializeAsync().ConfigureAwait(false);
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

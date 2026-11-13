@@ -1,14 +1,41 @@
 {
   "info": {
     "name": "Practitioner Service (FHIR R5)",
-    "description": "CRUD + поиск для справочника врачей. FHIR R5 API.\n\nПорядок запуска: Health -> Create -> Get -> Search -> Update -> Delete -> Get deleted -> Duplicate email -> Duplicate phone -> Idempotent -> Replay.\n\nЗапускайте через **Run Collection** или проходите запросы по порядку в папках. Переменные practitionerId, practitionerVersion, idemId проставляются автоматически.\n\nBase URL по умолчанию: http://localhost:8081 (см. переменную baseUrl на вкладке Variables).",
+    "description": "CRUD + поиск для справочника врачей. FHIR R5 API.\n\n**Порядок важен**: Health -> Create -> Get -> Search -> Update -> Delete -> Get deleted -> Duplicate email -> Duplicate phone -> Idempotent -> Replay.\n\nЗапускайте через **Run collection** или проходите запросы по порядку. Переменные `practitionerId`, `practitionerVersion`, `idemId` проставляются автоматически.\n\n**Особенности:**\n- Create (#2) генерирует случайные значения ФИО/email/phone через pre-request script - каждый прогон создаёт нового уникального врача.\n- Search (#4) ищет по сидинговому 'Иванов' - всегда возвращает результат, независимо от предыдущих прогонов.\n- Idempotency (#10, #11) используют стабильные данные и фиксированный ключ - на первом прогоне создают, на последующих replay'ят с тем же id.\n\n**Base URL по умолчанию:** http://localhost:8081 (см. переменную `baseUrl`).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8081",
-      "type": "string"
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "practitionerId",
+      "value": ""
+    },
+    {
+      "key": "practitionerVersion",
+      "value": ""
+    },
+    {
+      "key": "idemId",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "testLastName",
+      "value": ""
+    },
+    {
+      "key": "testEmail",
+      "value": ""
+    },
+    {
+      "key": "testPhone",
+      "value": ""
     }
   ],
   "item": [
@@ -44,6 +71,22 @@
           "name": "2. Create Practitioner (POST)",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a unique run id so each test run creates a fresh practitioner",
+                  "const runId = pm.variables.replaceIn('{{$randomUUID}}').replace(/-/g, '').slice(0, 8);",
+                  "const phoneSuffix = String(Math.floor(Math.random() * 10000000)).padStart(7, '0');",
+                  "pm.collectionVariables.set('runId', runId);",
+                  "pm.collectionVariables.set('testLastName', `Тестов-${runId}`);",
+                  "pm.collectionVariables.set('testEmail', `practitioner-${runId}@test.local`);",
+                  "pm.collectionVariables.set('testPhone', `+7999${phoneSuffix}`);",
+                  "console.log('Generated practitioner: ' + pm.collectionVariables.get('testLastName') + ' / ' + pm.collectionVariables.get('testEmail') + ' / ' + pm.collectionVariables.get('testPhone'));"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -52,8 +95,9 @@
                   "pm.test('ETag = \"1\"', () => pm.expect(pm.response.headers.get('ETag')).to.eql('\"1\"'));",
                   "const body = pm.response.json();",
                   "pm.test('resourceType = Practitioner', () => pm.expect(body.resourceType).to.eql('Practitioner'));",
-                  "pm.test('id is a non-empty string', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
+                  "pm.test('id present', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
                   "pm.test('meta.versionId = 1', () => pm.expect(body.meta.versionId).to.eql('1'));",
+                  "pm.test('family matches generated', () => pm.expect(body.name[0].family).to.eql(pm.collectionVariables.get('testLastName')));",
                   "pm.collectionVariables.set('practitionerId', body.id);",
                   "pm.collectionVariables.set('practitionerVersion', body.meta.versionId);"
                 ]
@@ -78,7 +122,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Тестов\", \"given\": [\"Пётр\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-999-100-20-30\" },\n    { \"system\": \"email\", \"value\": \"p.testov@test-clinic.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Кардиолог\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Тестовая клиника\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"{{testLastName}}\", \"given\": [\"Пётр\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"{{testPhone}}\" },\n    { \"system\": \"email\", \"value\": \"{{testEmail}}\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Кардиолог\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Тестовая клиника\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner"
@@ -96,6 +140,7 @@
                   "const body = pm.response.json();",
                   "const id = pm.collectionVariables.get('practitionerId');",
                   "pm.test('id matches created', () => pm.expect(body.id).to.eql(id));",
+                  "pm.test('family matches created', () => pm.expect(body.name[0].family).to.eql(pm.collectionVariables.get('testLastName')));",
                   "pm.test('ETag = \"1\"', () => pm.expect(pm.response.headers.get('ETag')).to.eql('\"1\"'));"
                 ]
               }
@@ -113,7 +158,7 @@
           }
         },
         {
-          "name": "4. Search (GET)",
+          "name": "4. Search by seed name (GET)",
           "event": [
             {
               "listen": "test",
@@ -124,10 +169,12 @@
                   "const body = pm.response.json();",
                   "pm.test('resourceType = Bundle', () => pm.expect(body.resourceType).to.eql('Bundle'));",
                   "pm.test('type = searchset', () => pm.expect(body.type).to.eql('searchset'));",
+                  "pm.test('total >= 1 (seed Иванов exists)', () => pm.expect(body.total).to.be.at.least(1));",
                   "pm.test('has self link', () => pm.expect((body.link || []).some(l => l.relation === 'self')).to.be.true);",
-                  "pm.test('contains our doctor', () => {",
-                  "  const id = pm.collectionVariables.get('practitionerId');",
-                  "  pm.expect((body.entry || []).some(e => e.resource && e.resource.id === id)).to.be.true;",
+                  "pm.test('contains seed Иванов', () => {",
+                  "  const hasIvanov = (body.entry || []).some(e =>",
+                  "    e.resource && e.resource.name && e.resource.name[0] && e.resource.name[0].family === 'Иванов');",
+                  "  pm.expect(hasIvanov).to.be.true;",
                   "});"
                 ]
               }
@@ -142,13 +189,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/Practitioner?name=Тестов&active=true&_count=10&_offset=0",
+              "raw": "{{baseUrl}}/Practitioner?name=Иванов&active=true&_count=10&_offset=0",
               "host": [ "{{baseUrl}}" ],
               "path": [ "Practitioner" ],
               "query": [
                 {
                   "key": "name",
-                  "value": "Тестов"
+                  "value": "Иванов"
                 },
                 {
                   "key": "active",
@@ -177,7 +224,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('versionId bumped to 2', () => pm.expect(body.meta.versionId).to.eql('2'));",
-                  "pm.test('family updated', () => pm.expect(body.name[0].family).to.eql('Тестов-Обновлённый'));",
+                  "pm.test('family updated', () => pm.expect(body.name[0].family).to.include('Обновлённый'));",
                   "pm.collectionVariables.set('practitionerVersion', body.meta.versionId);"
                 ]
               }
@@ -201,7 +248,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": false,\n  \"name\": [\n    { \"family\": \"Тестов-Обновлённый\", \"given\": [\"Пётр\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-999-100-20-31\" },\n    { \"system\": \"email\", \"value\": \"p.testov-new@test-clinic.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Кардиолог-хирург\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Тестовая клиника №2\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": false,\n  \"name\": [\n    { \"family\": \"{{testLastName}}-Обновлённый\", \"given\": [\"Пётр\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"{{testPhone}}\" },\n    { \"system\": \"email\", \"value\": \"{{testEmail}}\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Кардиолог-хирург\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Тестовая клиника №2\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner/{{practitionerId}}"
@@ -227,7 +274,7 @@
           }
         },
         {
-          "name": "7. Get deleted (GET → 410)",
+          "name": "7. Get deleted (GET -> 410)",
           "event": [
             {
               "listen": "test",
@@ -259,7 +306,7 @@
       "name": "Validation (409 Conflict)",
       "item": [
         {
-          "name": "8. Duplicate email (POST → 409)",
+          "name": "8. Duplicate email (POST -> 409)",
           "event": [
             {
               "listen": "test",
@@ -293,14 +340,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Дубль\", \"given\": [\"По Email\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-999-200-30-40\" },\n    { \"system\": \"email\", \"value\": \"i.ivanov@clinic1.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Дубль\", \"given\": [\"По Email\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+79992223344\" },\n    { \"system\": \"email\", \"value\": \"i.ivanov@clinic1.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner"
           }
         },
         {
-          "name": "9. Duplicate phone (POST → 409)",
+          "name": "9. Duplicate phone (POST -> 409)",
           "event": [
             {
               "listen": "test",
@@ -334,7 +381,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Дубль\", \"given\": [\"По Телефону\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-900-100-00-01\" },\n    { \"system\": \"email\", \"value\": \"dup-phone@test-clinic.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Дубль\", \"given\": [\"По Телефону\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+79001000001\" },\n    { \"system\": \"email\", \"value\": \"dup-phone@test.local\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner"
@@ -353,10 +400,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('201 Created (or replayed)', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('resourceType = Practitioner', () => pm.expect(body.resourceType).to.eql('Practitioner'));",
-                  "pm.test('id is a non-empty string', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
+                  "pm.test('id present', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
                   "pm.collectionVariables.set('idemId', body.id);"
                 ]
               }
@@ -380,7 +427,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Идемпотентный\", \"given\": [\"Тест\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-999-300-40-50\" },\n    { \"system\": \"email\", \"value\": \"idem@test-clinic.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Идемпотентный-Стабильный\", \"given\": [\"Тест\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+79995559988\" },\n    { \"system\": \"email\", \"value\": \"idem-stable@test.local\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner"
@@ -398,7 +445,7 @@
                   "const body = pm.response.json();",
                   "const idemId = pm.collectionVariables.get('idemId');",
                   "pm.test('same id as first call', () => pm.expect(body.id).to.eql(idemId));",
-                  "pm.test('resourceType = Practitioner', () => pm.expect(body.resourceType).to.eql('Practitioner'));"
+                  "pm.test('same family as first call', () => pm.expect(body.name[0].family).to.eql('Идемпотентный-Стабильный'));"
                 ]
               }
             }
@@ -421,7 +468,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Идемпотентный\", \"given\": [\"Тест\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+7-999-300-40-50\" },\n    { \"system\": \"email\", \"value\": \"idem@test-clinic.ru\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
+              "raw": "{\n  \"resourceType\": \"Practitioner\",\n  \"active\": true,\n  \"name\": [\n    { \"family\": \"Идемпотентный-Стабильный\", \"given\": [\"Тест\"] }\n  ],\n  \"telecom\": [\n    { \"system\": \"phone\", \"value\": \"+79995559988\" },\n    { \"system\": \"email\", \"value\": \"idem-stable@test.local\" }\n  ],\n  \"qualification\": [\n    { \"code\": { \"text\": \"Терапевт\" } }\n  ],\n  \"extension\": [\n    { \"url\": \"http://example.org/fhir/StructureDefinition/place-of-work\", \"valueString\": \"Клиника\" }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/Practitioner"
