@@ -1,5 +1,6 @@
 using PractitionerService.Api.Configuration;
 using PractitionerService.Api.Middleware;
+using PractitionerService.Application;
 using PractitionerService.Infrastructure;
 using PractitionerService.Infrastructure.Persistence;
 
@@ -19,7 +20,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var initializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-    await initializer.InitializeAsync();
+    await initializer.InitializeAsync().ConfigureAwait(false);
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

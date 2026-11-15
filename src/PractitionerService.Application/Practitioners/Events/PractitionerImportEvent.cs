@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Practitioners.Events;
+namespace PractitionerService.Application.Practitioners.Events;
 
 /// <summary>
 /// Import event for practitioner data coming from an external system via the message bus.

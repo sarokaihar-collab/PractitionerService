@@ -1,4 +1,6 @@
-﻿public sealed record PractitionerFilter(
+namespace PractitionerService.Application.Practitioners;
+
+public sealed record PractitionerFilter(
     string? NameContains = null,
     string? FamilyContains = null,
     string? GivenContains = null,

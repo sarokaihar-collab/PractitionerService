@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Api.Fhir;
+namespace PractitionerService.Api.Fhir;
 
 public static class FhirConstants
 {

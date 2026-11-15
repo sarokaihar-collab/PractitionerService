@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Common;
+namespace PractitionerService.Application.Common;
 
 /// <summary>
 /// Simple cache abstraction. Implementations may use Redis, in-memory, etc.

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PractitionerService.Application.Common;
@@ -8,14 +8,14 @@ namespace PractitionerService.Infrastructure.Persistence;
 
 internal sealed class PractitionerSeeder
 {
-    private const string SeedFileRelativePath = "SeedData/practitioners.json";
+    private const string _seedFileRelativePath = "SeedData/practitioners.json";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
+        AllowTrailingCommas = true,
     };
 
     private readonly PractitionerDbContext _db;
@@ -31,18 +31,20 @@ internal sealed class PractitionerSeeder
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        if (await _db.Practitioners.AnyAsync(ct))
+        if (await _db.Practitioners.AnyAsync(ct).ConfigureAwait(false))
         {
             _logger.LogInformation("Тестовые данные уже присутствуют, сидинг пропущен.");
             return;
         }
 
-        var filePath = Path.Combine(AppContext.BaseDirectory, SeedFileRelativePath);
+        var filePath = Path.Combine(AppContext.BaseDirectory, _seedFileRelativePath);
         if (!File.Exists(filePath))
+        {
             throw new FileNotFoundException($"Файл тестовых данных не найден: {filePath}", filePath);
+        }
 
         await using var stream = File.OpenRead(filePath);
-        var seed = await JsonSerializer.DeserializeAsync<List<SeedPractitioner>>(stream, JsonOptions, ct)
+        var seed = await JsonSerializer.DeserializeAsync<List<SeedPractitioner>>(stream, _jsonOptions, ct).ConfigureAwait(false)
                    ?? throw new InvalidOperationException($"Не удалось прочитать файл тестовых данных: {filePath}");
 
         var now = _clock.UtcNow;
@@ -51,7 +53,7 @@ internal sealed class PractitionerSeeder
             .ToList();
 
         _db.Practitioners.AddRange(practitioners);
-        await _db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Загружено {Count} тестовых врачей.", practitioners.Count);
     }

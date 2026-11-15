@@ -1,19 +1,17 @@
-﻿using PractitionerService.Api.Fhir;
-using PractitionerService.Api.Fhir.Models;
-using PractitionerService.Application.Common.Exceptions;
-using PractitionerService.Domain.Common.Exceptions;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using PractitionerService.Api.Fhir;
+using PractitionerService.Api.Fhir.Models;
 
 namespace PractitionerService.Api.Middleware;
 
 public sealed class ExceptionHandlingMiddleware
 {
-    private static readonly JsonSerializerOptions SerializeOptions = new()
+    private static readonly JsonSerializerOptions _serializeOptions = new()
     {
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
     };
 
     private readonly RequestDelegate _next;
@@ -29,7 +27,7 @@ public sealed class ExceptionHandlingMiddleware
     {
         try
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
         }
         catch (Exception ex) when (MapStatus(ex) is { } status)
         {
@@ -40,8 +38,8 @@ public sealed class ExceptionHandlingMiddleware
             context.Response.StatusCode = status;
             context.Response.ContentType = FhirConstants.MediaTypeFhirJson;
 
-            var json = JsonSerializer.Serialize(outcome, SerializeOptions);
-            await context.Response.WriteAsync(json);
+            var json = JsonSerializer.Serialize(outcome, _serializeOptions);
+            await context.Response.WriteAsync(json, cancellationToken: context.RequestAborted).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -58,11 +56,12 @@ public sealed class ExceptionHandlingMiddleware
                     {
                         Severity = FhirConstants.SeverityError,
                         Code = FhirConstants.IssueTypeException,
-                        Diagnostics = "Внутренняя ошибка сервера."
-                    }
-                }
+                        Diagnostics = "Внутренняя ошибка сервера.",
+                    },
+                },
             };
-            await context.Response.WriteAsync(JsonSerializer.Serialize(outcome, SerializeOptions));
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(outcome, _serializeOptions), cancellationToken: context.RequestAborted).ConfigureAwait(false);
         }
     }
 

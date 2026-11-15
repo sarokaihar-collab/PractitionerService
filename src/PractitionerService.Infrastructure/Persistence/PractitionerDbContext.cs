@@ -1,13 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PractitionerService.Domain.Practitioners;
 
 namespace PractitionerService.Infrastructure.Persistence;
 
 public sealed class PractitionerDbContext : DbContext
 {
-    public DbSet<Practitioner> Practitioners => Set<Practitioner>();
+    public PractitionerDbContext(DbContextOptions<PractitionerDbContext> options)
+        : base(options)
+    {
+    }
 
-    public PractitionerDbContext(DbContextOptions<PractitionerDbContext> options) : base(options) { }
+    public DbSet<Practitioner> Practitioners => Set<Practitioner>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

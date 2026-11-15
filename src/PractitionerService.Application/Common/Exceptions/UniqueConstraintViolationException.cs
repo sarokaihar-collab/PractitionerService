@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Common.Exceptions;
+namespace PractitionerService.Application.Common.Exceptions;
 
 /// <summary>
 /// Identifies which unique constraint was violated, without leaking DB-specific names.
@@ -8,7 +8,7 @@ public enum UniqueConstraintField
     Unknown,
     Email,
     Phone,
-    SourceEventId
+    SourceEventId,
 }
 
 /// <summary>
@@ -17,12 +17,13 @@ public enum UniqueConstraintField
 /// </summary>
 public sealed class UniqueConstraintViolationException : Exception
 {
-    public UniqueConstraintField Field { get; }
-    public string? ConstraintName { get; }
-
-    public UniqueConstraintViolationException( UniqueConstraintField field, string message, string? constraintName = null, Exception? inner = null) : base(message, inner)
+    public UniqueConstraintViolationException(UniqueConstraintField field, string message, string? constraintName = null, Exception? inner = null)
+        : base(message, inner)
     {
         Field = field;
         ConstraintName = constraintName;
     }
+
+    public UniqueConstraintField Field { get; }
+    public string? ConstraintName { get; }
 }

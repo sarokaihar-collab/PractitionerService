@@ -1,4 +1,6 @@
-﻿using MediatR;
+using MediatR;
+
+namespace PractitionerService.Application.Practitioners;
 
 public sealed record UpdatePractitionerCommand(
     Guid Id,

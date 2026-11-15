@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -27,7 +27,7 @@ namespace PractitionerService.Infrastructure.Migrations
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     version = table.Column<int>(type: "integer", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    source_event_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                    source_event_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                 },
                 constraints: table =>
                 {

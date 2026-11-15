@@ -1,9 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PractitionerService.Application.Common;
-using PractitionerService.Application.Practitioners.Abstractions;
+using PractitionerService.Application.Practitioners;
 using PractitionerService.Infrastructure.Caching;
 using PractitionerService.Infrastructure.Messaging;
 using PractitionerService.Infrastructure.Options;

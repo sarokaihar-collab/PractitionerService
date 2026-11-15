@@ -1,4 +1,4 @@
-﻿namespace PractitionerService.Application.Common;
+namespace PractitionerService.Application.Common;
 
 /// <summary>
 /// Abstracts the system clock. Used by command handlers to set

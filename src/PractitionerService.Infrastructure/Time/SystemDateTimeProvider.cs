@@ -1,4 +1,4 @@
-﻿using PractitionerService.Application.Common;
+using PractitionerService.Application.Common;
 
 namespace PractitionerService.Infrastructure.Time;
 

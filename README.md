@@ -44,16 +44,16 @@ cp .env.example .env      # опционально — если нужно по�
 docker compose up --build
 ```
 
-Первый запуск займёт ~3–5 минут (сборка образа + инициализация БД).
+Первый запуск — ~3–5 минут (сборка образа + инициализация БД).
 
-**Что произойдёт автоматически:**
+**Автоматически:**
 
-1. Compose поднимает PostgreSQL и Redis, ждёт `healthy` по healthcheck.
+1. Compose поднимает PostgreSQL и Redis, ждёт `healthy`.
 2. API применяет EF Core миграции (`Database.MigrateAsync`).
 3. Сидинг загружает 10 тестовых врачей из `SeedData/practitioners.json`.
 4. Стартует `PractitionerEventConsumer` (BackgroundService) и подписывается на Redis Stream.
 
-**Куда смотреть после старта:**
+**Куда смотреть:**
 
 | Что | URL |
 |---|---|
@@ -74,11 +74,11 @@ curl http://localhost:8081/health
 
 ### 2. Postman
 
-Импорт: Postman → **File → Import** → `docs/Practitioner.postman_collection.json`.
+Импорт: **File → Import** → `docs/Practitioner.postman_collection.json`.
 
-Убедиться, что переменная `baseUrl` = `http://localhost:8081` (вкладка **Variables** коллекции).
+Проверить `baseUrl = http://localhost:8081` (вкладка **Variables** коллекции).
 
-Запуск: правой кнопкой по коллекции → **Run collection** → **Run**.
+Запуск: правый клик по коллекции → **Run collection** → **Run**.
 
 **11 запросов, все должны быть зелёные:**
 
@@ -130,8 +130,8 @@ docker exec -i practitionerservice-redis redis-cli XADD practitioner-events '*' 
    ```bash
    docker compose up -d postgres redis
    ```
-2. Проверить `src/PractitionerService.Api/appsettings.Development.json` —
-   `Host=localhost;Port=5434` (Postgres), `Redis:Configuration: "localhost:6380"`.
+2. Проверить `src/PractitionerService.Api/appsettings.Development.json`:
+   `Host=localhost;Port=5434`, `Redis:Configuration: "localhost:6380"`.
 3. Открыть `PractitionerService.sln`, startup project — `PractitionerService.Api`, F5.
 
 Swagger включён (`ASPNETCORE_ENVIRONMENT=Development`).

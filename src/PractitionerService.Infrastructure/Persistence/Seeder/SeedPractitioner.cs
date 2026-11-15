@@ -1,4 +1,6 @@
-﻿internal sealed class SeedPractitioner
+namespace PractitionerService.Infrastructure.Persistence;
+
+internal sealed class SeedPractitioner
 {
     public string FirstName { get; init; } = string.Empty;
     public string LastName { get; init; } = string.Empty;
