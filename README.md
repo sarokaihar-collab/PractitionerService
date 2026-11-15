@@ -1,7 +1,6 @@
 # Practitioner Service
 
 [![CI](https://github.com/sarokaihar-collab/PractitionerService/actions/workflows/ci.yml/badge.svg)](https://github.com/sarokaihar-collab/PractitionerService/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/sarokaihar-collab/PractitionerService/branch/main/graph/badge.svg)](https://codecov.io/gh/sarokaihar-collab/PractitionerService)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
