@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using PractitionerService.Application.Practitioners.Abstractions;
 
 public sealed class SearchPractitionersQueryHandler
     : IRequestHandler<SearchPractitionersQuery, PagedResult<PractitionerReadModel>>

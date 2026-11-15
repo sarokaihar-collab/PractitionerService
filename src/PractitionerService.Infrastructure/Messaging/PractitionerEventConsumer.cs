@@ -13,6 +13,10 @@ internal sealed class PractitionerEventConsumer : BackgroundService
     private const string StreamKey = "practitioner-events";
     private const string GroupName = "practitioner-service";
 
+    private const string MessageData = "data";
+
+    private const string MessageCreated = "created";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -35,7 +39,7 @@ internal sealed class PractitionerEventConsumer : BackgroundService
     {
         await EnsureConsumerGroupAsync(ct);
 
-        _logger.LogInformation("Practitioner event consumer started. Stream={Stream}, Group={Group}, Consumer={Consumer}", StreamKey, GroupName, ConsumerName);
+        _logger.LogInformation("Consumer событий врачей запущен. Stream={Stream}, Group={Group}, Consumer={Consumer}", StreamKey, GroupName, ConsumerName);
 
         var db = _redis.GetDatabase();
 
@@ -67,7 +71,7 @@ internal sealed class PractitionerEventConsumer : BackgroundService
     {
         try
         {
-            var rawValue = message.Values.FirstOrDefault(v => v.Name == "data").Value;
+            var rawValue = message.Values.FirstOrDefault(v => v.Name == MessageData).Value;
             string? json = rawValue;
 
             if (string.IsNullOrEmpty(json))
@@ -85,7 +89,7 @@ internal sealed class PractitionerEventConsumer : BackgroundService
                 return;
             }
 
-            if (evt.Type != "created")
+            if (evt.Type != MessageCreated)
             {
                 _logger.LogInformation("Event {Id} типа '{Type}' пропущен (поддерживается только 'created').", message.Id, evt.Type);
                 await db.StreamAcknowledgeAsync(StreamKey, GroupName, message.Id);
@@ -123,11 +127,11 @@ internal sealed class PractitionerEventConsumer : BackgroundService
 
         if (created)
         {
-            _logger.LogInformation("Created consumer group '{Group}' on stream '{Stream}'.", GroupName, StreamKey);
+            _logger.LogInformation("Создана consumer group '{Group}' в stream '{Stream}'.", GroupName, StreamKey);
         }
         else
         {
-            _logger.LogInformation("Consumer group '{Group}' already exists on stream '{Stream}'.", GroupName, StreamKey);
+            _logger.LogInformation("Consumer group '{Group}' уже существует в stream '{Stream}'.", GroupName, StreamKey);
         }
     }
 }

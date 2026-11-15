@@ -23,8 +23,8 @@ public static class PractitionerFhirMapper
             },
             Telecom = new List<FhirContactPoint>
             {
-                new() { System = "phone", Value = m.Phone },
-                new() { System = "email", Value = m.Email }
+                new() { System = FhirConstants.TelecomSystemPhone, Value = m.Phone },
+                new() { System = FhirConstants.TelecomSystemEmail, Value = m.Email }
             },
             Qualification = new List<FhirQualification>
             {
@@ -63,7 +63,7 @@ public static class PractitionerFhirMapper
             {
                 FullUrl = $"{selfBaseUrl.TrimEnd('/')}/{item.Id}",
                 Resource = ToFhir(item),
-                Search = new FhirBundleEntrySearch { Mode = "match" }
+                Search = new FhirBundleEntrySearch { Mode = FhirConstants.BundleEntryModeMatch }
             }).ToList()
         };
     }
@@ -72,14 +72,14 @@ public static class PractitionerFhirMapper
     {
         var links = new List<FhirBundleLink>
             {
-                new() { Relation = "self", Url = BuildSearchUrl(baseUrl, filter, filter.Offset) }
+                new() { Relation = FhirConstants.LinkRelationSelf, Url = BuildSearchUrl(baseUrl, filter, filter.Offset) }
             };
 
         if (filter.Offset > 0)
         {
             links.Add(new FhirBundleLink
             {
-                Relation = "previous",
+                Relation = FhirConstants.LinkRelationPrevious,
                 Url = BuildSearchUrl(baseUrl, filter, Math.Max(0, filter.Offset - filter.Count))
             });
         }
@@ -88,7 +88,7 @@ public static class PractitionerFhirMapper
         {
             links.Add(new FhirBundleLink
             {
-                Relation = "next",
+                Relation = FhirConstants.LinkRelationNext,
                 Url = BuildSearchUrl(baseUrl, filter, filter.Offset + filter.Count)
             });
         }
@@ -184,11 +184,11 @@ public static class PractitionerFhirMapper
         if (fhir.Telecom is null || fhir.Telecom.Count == 0)
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Поле 'telecom' обязательно и должно содержать хотя бы один контакт (phone и email).");
 
-        var phone = fhir.Telecom.FirstOrDefault(t => t.System == "phone")?.Value;
+        var phone = fhir.Telecom.FirstOrDefault(t => t.System == FhirConstants.TelecomSystemPhone)?.Value;
         if (string.IsNullOrWhiteSpace(phone))
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Не найден контакт с 'system=phone' в 'telecom'.");
 
-        var email = fhir.Telecom.FirstOrDefault(t => t.System == "email")?.Value;
+        var email = fhir.Telecom.FirstOrDefault(t => t.System == FhirConstants.TelecomSystemEmail)?.Value;
         if (string.IsNullOrWhiteSpace(email))
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Не найден контакт с 'system=email' в 'telecom'.");
 
@@ -209,9 +209,7 @@ public static class PractitionerFhirMapper
     {
         var value = getValue();
         if (string.IsNullOrWhiteSpace(value))
-            throw new FhirValidationException(
-                FhirConstants.IssueTypeRequired,
-                $"Поле '{fieldPath}' обязательно.");
+            throw new FhirValidationException(FhirConstants.IssueTypeRequired, $"Поле '{fieldPath}' обязательно.");
         return value!;
     }
 }

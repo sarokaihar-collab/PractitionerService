@@ -1,6 +1,8 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using PractitionerService.Application.Common;
 using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Practitioners.Abstractions;
 using PractitionerService.Domain.Practitioners;
 
 public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePractitionerCommand, PractitionerCommandResult>
@@ -26,7 +28,7 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
             var existing = await _repository.FindBySourceEventIdAsync(cmd.SourceEventId, ct);
             if (existing is not null)
             {
-                _logger.LogInformation("Idempotent replay for SourceEventId={SourceEventId}, returning practitioner {Id}", cmd.SourceEventId, existing.Id);
+                _logger.LogInformation("Идемпотентный повтор для SourceEventId={SourceEventId}, возвращаем врача {Id}", cmd.SourceEventId, existing.Id);
                 return new PractitionerCommandResult(existing.Id, existing.Version);
             }
         }

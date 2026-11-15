@@ -19,4 +19,22 @@ public static class FhirConstants
     public const string IssueTypeException = "exception";
     public const string SeverityError = "error";
     public const string SeverityWarning = "warning";
+
+    // Telecom systems
+    public const string TelecomSystemPhone = "phone";
+    public const string TelecomSystemEmail = "email";
+
+    // Bundle types
+    public const string BundleTypeSearchset = "searchset";
+
+    // Bundle entry modes
+    public const string BundleEntryModeMatch = "match";
+
+    // Link relations
+    public const string LinkRelationSelf = "self";
+    public const string LinkRelationNext = "next";
+    public const string LinkRelationPrevious = "previous";
+
+    // Event types (Redis Streams)
+    public const string EventTypeCreated = "created";
 }

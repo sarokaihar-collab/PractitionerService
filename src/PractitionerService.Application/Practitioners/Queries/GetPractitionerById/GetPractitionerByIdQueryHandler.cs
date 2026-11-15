@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners.Abstractions;
 
 namespace PractitionerService.Application.Practitioners.Queries;
 

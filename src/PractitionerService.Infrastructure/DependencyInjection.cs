@@ -1,9 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners.Abstractions;
 using PractitionerService.Infrastructure.Caching;
 using PractitionerService.Infrastructure.Messaging;
+using PractitionerService.Infrastructure.Options;
 using PractitionerService.Infrastructure.Persistence;
 using PractitionerService.Infrastructure.Persistence.Repositories;
 using PractitionerService.Infrastructure.Time;
@@ -13,30 +16,49 @@ namespace PractitionerService.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Строка подключения 'Default' не найдена в конфигурации.");
+        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<RedisOptions>().Bind(configuration.GetSection(RedisOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
 
-        services.AddDbContext<PractitionerDbContext>(options => options.UseNpgsql(connectionString));
+        // === DbContext (uses validated IOptions<DatabaseOptions>) ===
+        services.AddDbContext<PractitionerDbContext>((sp, options) =>
+        {
+            var db = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+            options.UseNpgsql(db.Default);
+        });
 
+        // === Redis connection multiplexer ===
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            var redis = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
+            return ConnectionMultiplexer.Connect(redis.Configuration);
+        });
+
+        // === IDistributedCache backed by Redis ===
+        services.AddStackExchangeRedisCache(options =>
+        {
+            // Read directly from configuration: AddStackExchangeRedisCache does not
+            // expose IOptions<RedisOptions>. Options validation above guarantees that
+            // the values are present and valid, so any bad config fails at startup.
+            var redis = configuration.GetSection(RedisOptions.Section).Get<RedisOptions>()
+                ?? throw new InvalidOperationException($"Секция конфигурации '{RedisOptions.Section}' не найдена.");
+
+            options.Configuration = redis.Configuration;
+            options.InstanceName = redis.InstanceName;
+        });
+
+        // === Repositories, UoW, clock, cache, seeder ===
         services.AddScoped<IPractitionerRepository, PractitionerRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+        services.AddScoped<ICacheService, RedisCacheService>();
         services.AddScoped<PractitionerSeeder>();
         services.AddScoped<IDbInitializer, DbInitializer>();
 
-        var redisConfig = configuration.GetSection("Redis")["Configuration"] ?? throw new InvalidOperationException("Redis:Configuration не задан.");
-
-        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConfig));
-
-        services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = redisConfig;
-            options.InstanceName = "practitioner-service:";
-        });
-
-        services.AddScoped<ICacheService, RedisCacheService>();
+        // === Background consumer ===
         services.AddHostedService<PractitionerEventConsumer>();
 
         return services;

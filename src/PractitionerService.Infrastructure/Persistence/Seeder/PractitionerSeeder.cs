@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PractitionerService.Application.Common;
 using PractitionerService.Domain.Practitioners;
 
 namespace PractitionerService.Infrastructure.Persistence;

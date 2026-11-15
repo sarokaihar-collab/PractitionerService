@@ -41,7 +41,7 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=practitioners;Username=postgres;Password=postgres"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-practitioners};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}"
       Redis__Configuration: "redis:6379"
     ports:
       - "${API_HOST_PORT:-8081}:8080"

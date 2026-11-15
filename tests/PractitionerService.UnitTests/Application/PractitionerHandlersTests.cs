@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners.Abstractions;
 using PractitionerService.Application.Practitioners.Queries;
 using PractitionerService.Domain.Practitioners;
 

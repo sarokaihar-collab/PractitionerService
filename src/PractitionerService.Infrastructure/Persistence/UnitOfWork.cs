@@ -28,14 +28,14 @@ internal sealed class UnitOfWork : IUnitOfWork
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogWarning(ex, "Optimistic concurrency conflict while saving changes.");
+            _logger.LogWarning(ex, "Конфликт версий при сохранении данных.");
             throw new ConflictException("Данные были изменены другим запросом. Обновите данные и повторите.", ex);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: UniqueViolation } pg)
         {
             var (field, message) = ResolveUniqueViolation(pg.ConstraintName);
 
-            _logger.LogWarning(ex, "Unique constraint '{ConstraintName}' violated.", pg.ConstraintName);
+            _logger.LogWarning(ex, "Нарушено уникальное ограничение '{ConstraintName}'.", pg.ConstraintName);
 
             throw new UniqueConstraintViolationException(field, message, pg.ConstraintName, ex);
         }

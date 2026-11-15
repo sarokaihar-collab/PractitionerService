@@ -1,7 +1,7 @@
 # Архитектура и принятые решения
 
 Документ описывает архитектуру сервиса, FHIR-специфику, кэширование, асинхронный импорт,
-языковые конвенции и осознанные ограничения.
+качество кода, безопасность, языковые конвенции и осознанные ограничения.
 
 Краткий гайд по запуску и проверке — в [`../README.md`](../README.md).
 
@@ -42,6 +42,18 @@ DI по слоям: `AddApplication()` / `AddInfrastructure(configuration)` + с
 email, isActive) и служебные (createdAt, updatedAt, version, isDeleted, sourceEventId).
 `HumanName`, `ContactPoint`, `CodeableConcept` — FHIR-типы, живут **только** в Api-слое.
 Маппинг Domain ↔ FHIR — единственное место, где эти миры встречаются.
+
+### Design-time DbContext factory
+
+`PractitionerDbContextFactory : IDesignTimeDbContextFactory<PractitionerDbContext>`
+используется **только** инструментом `dotnet ef` для генерации миграций.
+В рантайме `DbContext` создаётся через DI с реальной строкой подключения.
+
+- Строка подключения читается из env var `ConnectionStrings__Default` (тот же, что
+  у приложения), fallback — локальный placeholder для `dotnet ef migrations add`
+  (к БД не подключается).
+- **Никаких кредов в коде.** Placeholder — не секрет, реальные креды — из env vars
+  или `dotnet user-secrets`.
 
 ## Порты
 
@@ -165,7 +177,7 @@ Stateless: `_count` (по умолчанию 20, максимум 100) и `_offs
   сравнение в handler + `IsConcurrencyToken` на `Version` в EF Core.
 - `If-Match: *` — «обновить, если ресурс существует» (existence проверяется через `404`/`410`,
   версия не сверяется).
-- Некорректный `If-Match` (например, `"abc"`) → `422` `code=structure`.
+- Некорректный `If-Match` (например, `"abc"` или `""`) → `422` `code=structure`.
 
 ### Уникальность и консистентность
 
@@ -213,7 +225,7 @@ Stateless: `_count` (по умолчанию 20, максимум 100) и `_offs
 - `GET /Practitioner` (search) **сознательно не кэшируется** — результат зависит от десятка
   параметров, инвалидация при любом изменении любого врача делает кэш бесполезным.
 
-### Cache-aside race (multi-instance)
+### Гонка cache-aside (multi-instance)
 
 При обновлении кэш инвалидируется **после** `SaveChanges`. Между `SaveChanges` и `RemoveAsync`
 есть окно, в котором параллельный `GET` может прочитать **старую** строку из БД и положить её
@@ -228,24 +240,6 @@ Stateless: `_count` (по умолчанию 20, максимум 100) и `_offs
 
 Помимо REST, сервис принимает события импорта через Redis Stream `practitioner-events`.
 Реализует требование ТЗ «поддержка асинхронного импорта данных через шину сообщений».
-
-### Поток
-
-```
-Внешняя система ──XADD──► Redis Stream "practitioner-events"
-                                  │
-                                  ▼
-                       PractitionerEventConsumer (BackgroundService)
-                                  │
-                                  ▼
-                       IMediator.Send(CreatePractitionerCommand)
-                                  │
-                                  ▼
-                            PostgreSQL
-```
-
-Consumer — тонкая прослойка: только десериализация + вызов существующего MediatR-handler.
-Никакой новой бизнес-логики.
 
 ### Формат сообщения
 
@@ -274,15 +268,6 @@ Consumer — тонкая прослойка: только десериализ�
 `CreatePractitionerCommandHandler` при существующем `sourceEventId` возвращает уже созданного
 врача, consumer делает `XACK`.
 
-### Почему Redis Streams, а не Kafka
-
-- Redis уже нужен для кэша — не поднимаем второй инфраструктурный контейнер.
-- Redis Streams — полноценная очередь с consumer groups, `XACK`, `XAUTOCLAIM`.
-- Для тестового задания хватает с запасом.
-
-Переход на Kafka — замена одного адаптера в Infrastructure (`PractitionerEventConsumer`).
-Application и Domain не меняются.
-
 ### Ограничения consumer'а
 
 - `XACK` делается **даже при ошибке обработки** (чтобы «битое» сообщение не висело в Pending).
@@ -291,6 +276,7 @@ Application и Domain не меняются.
   `ProcessAsync` + маппинг на `UpdatePractitionerCommand`/`DeletePractitionerCommand`.
 - Polling-модель (`Task.Delay(500)` + `XREADGROUP`), не `XREADGROUP BLOCK`. Для тестового —
   проще; в проде — `BLOCK` экономит запросы к Redis.
+- JSON-ошибки логируются с содержимым payload (первые 500 символов) для диагностики.
 
 ## Индексы
 
@@ -308,20 +294,74 @@ Application и Domain не меняются.
 + `gin_trgm_ops`) специально создан для `LIKE`/`ILIKE` с ведущим `%` и используется
 всеми поисковыми запросами через `EF.Functions.ILike`.
 
-**Компромисс:** GIN-индексы больше по размеру и замедляют INSERT/UPDATE, но дают
-кардинальное ускорение поиска на больших объёмах. При необходимости перейти на
-другой механизм — `tsvector` + GIN (полнотекстовый поиск) или внешняя поисковая
-система (Elasticsearch / Meilisearch).
-
 **B-tree индексы по `first_name`/`last_name`/`speciality`/`place_of_work` не созданы** —
 они не используются поисковыми запросами.
 
-## Языковые конвенции
+## Качество кода
 
-- **Логи, сообщения исключений, тексты ошибок API (`OperationOutcome.diagnostics`)** — русский.
-- **README, ARCHITECTURE.md, Swagger-описания, XML-документация на Api-слой** — русский.
-- **Идентификаторы в коде, inline-комментарии `//`, XML-документация на Domain и Application** — английский.
-- **Системные логи ASP.NET Core / EF Core** — английский (платформенные).
+### Анализаторы и конфигурация
+
+- **`Directory.Build.props`** — единая точка подключения пакетов анализаторов:
+  Microsoft.CodeAnalysis.NetAnalyzers, Microsoft.EntityFrameworkCore.Analyzers,
+  StyleCop, Roslynator, Meziantou.Analyzer, SonarAnalyzer.
+- **`.editorconfig`** в корне решения — стиль, именование, severity per-rule.
+  Современный формат, заменяет устаревший `.ruleset` (deprecated с .NET 5).
+
+### Уровни severity
+
+- **`error`** — build-breaking: EF Core internals (`EF1001`/`EF1002`), SQL injection
+  (`CA2100`), `async void` (`VSTHRD100`).
+- **`warning`** — resource management, async, globalization, correctness (~20 правил).
+- **`suggestion`** — стиль и low-risk запахи.
+- **`none`** — StyleCop documentation rules (XML-документация пишется только там,
+  где видна в Swagger — Api-слой).
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) прогоняет:
+- `dotnet format --verify-no-changes --severity warning` — форматирование;
+- `dotnet build -c Release` — сборка;
+- `dotnet test tests/PractitionerService.UnitTests` — Unit-тесты с покрытием (Codecov);
+- `docker build` — сборка образа (на `push`).
+
+## Безопасность
+
+### Креды в репозитории
+
+- **`appsettings.json`** (production) — без кредов. Все секреты приходят из env vars.
+  Если обязательная настройка отсутствует — приложение падает при старте
+  (`ValidateOnStart` на `DatabaseOptions` / `RedisOptions`).
+- **`appsettings.Development.json`** — локальные dev-креды (`postgres`/`postgres`)
+  для docker-compose Postgres. Безопасно коммитить, потому что (а) это dev-only аккаунт,
+  (б) контейнер слушает только `localhost`, (в) нет реальных данных.
+  В крупных проектах этот файл был бы в `.gitignore` и заменён на
+  `appsettings.Development.example.json`.
+- **`docker-compose.yml`** — креды из `.env` (`POSTGRES_USER`, `POSTGRES_PASSWORD`)
+  с dev-fallback'ами. `.env` в `.gitignore`; в git только `.env.example`.
+- **`PractitionerDbContextFactory`** (design-time) — использует нерабочий placeholder-пароль.
+  Реальный `dotnet ef database update` требует явной установки `ConnectionStrings__Default`.
+
+## Конфигурация
+
+Все инфраструктурные настройки описаны через **Options pattern** с `ValidateOnStart`:
+
+- `DatabaseOptions` (`ConnectionStrings:Default`) — обязательна, `[Required]`.
+- `RedisOptions` (`Redis:Configuration`, `Redis:InstanceName`) — `Configuration` обязательна.
+
+При отсутствии или невалидности конфигурации приложение **падает при старте**
+(`OptionsValidationException`), а не возвращает 500 на первом запросе.
+
+Значения приходят из:
+- `appsettings.json` (без кредов) — базовая конфигурация;
+- `appsettings.Development.json` (dev-креды) — перекрывает при `ASPNETCORE_ENVIRONMENT=Development`;
+- env vars (`ConnectionStrings__Default`, `Redis__Configuration`) — приоритет выше,
+  используются в Docker Compose.
+
+## Версионирование
+
+Проект следует [Semantic Versioning 2.0.0](https://semver.org/).
+История изменений — в [`../CHANGELOG.md`](../CHANGELOG.md).
+Лицензия — MIT (см. [`../LICENSE`](../LICENSE)).
 
 ## Тесты
 
@@ -330,15 +370,7 @@ Application и Domain не меняются.
 | `UnitTests` (Domain) | Инварианты `Practitioner`: валидация, нормализация email/phone, soft delete, optimistic concurrency в сущности |
 | `UnitTests` (Application) | Handlers: idempotent replay, cache hit/miss, конфликт версий, clamp пагинации, инвалидация кэша |
 | `UnitTests` (Api) | `PractitionerFhirMapper`: маппинг туда-обратно, FHIR-валидация, генерация `Bundle.link` |
-| `IntegrationTests` | PostgreSQL через Testcontainers: unique email, unique phone, optimistic concurrency на уровне БД |
-
-**Сознательно не покрыто:**
-
-- `RedisCacheService` — тонкая обёртка над `IDistributedCache`, косвенно проверена через
-  `GetById`-тесты (cache hit/miss).
-- `PractitionerEventConsumer` — требует реального Redis Stream + фонового потока. Ручная
-  проверка через `XADD` (см. README).
-- HTTP-слой через `WebApplicationFactory` — избыточно: Postman-коллекция покрывает сценарии.
+| `UnitTests` (Architecture) | NetArchTest: правило зависимостей Clean Architecture |
 
 ## Ограничения и принятые решения
 
@@ -350,20 +382,9 @@ Application и Domain не меняются.
 - **`UnitOfWork` совмещает save + exception mapping.** `SaveChangesAsync` транслирует
   `DbUpdateException` в доменные типы. Это единый шов работы с БД; разделение на
   `IExceptionMapper` спекулятивно.
-- **`PractitionerFhirMapper` — статический.** Pure functions без зависимостей. Если появятся
-  зависимости (например, чтение конфигурации FHIR-профиля) — переведём в `IPractitionerFhirMapper`.
-- **`ExceptionMap` — единый source of truth.** Маппинг «тип исключения → HTTP + FHIR code»
-  в одном словаре. Middleware и `FhirOperationOutcomeFactory` читают из него.
 
 ### Функциональные
 
-- **`name` / `family` / `given` — семантика фильтров.** `name` ищет по `first_name` OR
-  `last_name`. `family` и `given` — уточняющие (AND с предыдущими):
-  `?name=Иван&family=Петров` вернёт тех, у кого фамилия содержит «Петров» И
-  (имя или фамилия содержит «Иван»).
-- **Pagination — offset-based.** `_offset=N&_count=M` → SQL `OFFSET N LIMIT M`. На больших `N`
-  (> ~10 000) замедляется. В проде — cursor-based (`_cursor=<last_seen_id>`) или FHIR
-  `_page`-токены.
 - **`PUT` без `If-Match` — last-write-wins** (см. FHIR-специфика).
 - **Массивы FHIR** — берём только первый элемент (см. FHIR-специфика).
 
@@ -372,21 +393,12 @@ Application и Domain не меняются.
 - **`ILike` + GIN trigram** (см. Индексы). Требует расширения `pg_trgm` — Postgres-specific.
   Если понадобится MSSQL/MySQL — заменить на full-text search провайдера или
   нормализованные поля.
-- **Non-root в Docker** — `USER $APP_UID` (встроенный пользователь `app` в `aspnet:10.0`).
 - **API не стартует без БД** — `depends_on: condition: service_healthy` + healthcheck `pg_isready`.
 - **Healthcheck** проверяет доступность БД (`AddDbContextCheck`). Это readiness, не liveness.
 - **Миграции при старте** — `Database.MigrateAsync()` внутри `IDbInitializer`. Для продакшена —
   отдельный init-контейнер / job.
 - **Сидинг идемпотентен** — если в таблице есть хоть одна запись, сидинг пропускается.
 - **Креды в `appsettings.Development.json`** — тестовые, не секрет. В проде — secrets manager.
-
-### Сознательно не реализовано
-
-- **Аутентификация / авторизация** — по условиям тестового не требуется.
-- **Rate limiting** — не требуется.
-- **OpenTelemetry / метрики** — не требуется.
-- **DLQ + retry counter** в consumer'е — задокументировано, в проде обязательно.
-- **Полнотекстовый поиск** (опциональная часть ТЗ) — вместо него GIN trigram для подстроки.
 
 ### Версии пакетов
 
@@ -403,16 +415,18 @@ PractitionerService/
 │   ├── PractitionerService.Infrastructure/
 │   └── PractitionerService.Api/
 ├── tests/
-│   ├── PractitionerService.UnitTests/
-│   └── PractitionerService.IntegrationTests/
+│   ├── PractitionerService.UnitTests/          # Domain, Application, Api, Architecture
 ├── docs/
 │   ├── ARCHITECTURE.md                       # этот файл
 │   └── Practitioner.postman_collection.json
+├── .github/
+│   └── workflows/ci.yml
+├── CHANGELOG.md
+├── LICENSE
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
 ├── .dockerignore
 ├── .gitignore
-├── Directory.Build.props
 └── README.md
 ```

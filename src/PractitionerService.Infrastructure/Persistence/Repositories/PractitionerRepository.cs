@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using PractitionerService.Application.Practitioners.Abstractions;
 using PractitionerService.Domain.Practitioners;
 
 namespace PractitionerService.Infrastructure.Persistence.Repositories;

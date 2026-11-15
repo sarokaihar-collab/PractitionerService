@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Practitioners.Abstractions;
 
 public sealed class UpdatePractitionerCommandHandler : IRequestHandler<UpdatePractitionerCommand, PractitionerCommandResult>
 {

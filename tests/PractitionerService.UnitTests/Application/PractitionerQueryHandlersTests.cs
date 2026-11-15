@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using NSubstitute;
 using PractitionerService.Application.Common;
-using PractitionerService.Application.Common.Exceptions;
+using PractitionerService.Application.Practitioners.Abstractions;
 using PractitionerService.Application.Practitioners.Queries;
 using PractitionerService.Domain.Practitioners;
 
