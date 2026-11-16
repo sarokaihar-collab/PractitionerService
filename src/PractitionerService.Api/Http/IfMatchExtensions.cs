@@ -14,7 +14,9 @@ public static class IfMatchExtensions
     /// </summary>
     public static int? GetIfMatchVersion(this HttpRequest request)
     {
-        var ifMatch = request?.Headers.IfMatch.FirstOrDefault();
+        ArgumentNullException.ThrowIfNull(request);
+
+        var ifMatch = request.Headers.IfMatch.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(ifMatch))
         {
             return null;

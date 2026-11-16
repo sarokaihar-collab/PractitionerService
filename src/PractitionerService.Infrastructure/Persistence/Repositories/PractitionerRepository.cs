@@ -13,13 +13,19 @@ internal sealed class PractitionerRepository : IPractitionerRepository
 
     public Task<Practitioner?> GetByIdAsync(Guid id, CancellationToken ct = default) => _db.Practitioners.FirstOrDefaultAsync(p => p.Id == id, ct);
 
-    public Task<Practitioner?> FindBySourceEventIdAsync(string sourceEventId, CancellationToken ct = default) =>
-        _db.Practitioners
+    public Task<Practitioner?> FindBySourceEventIdAsync(string sourceEventId, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(sourceEventId);
+
+        return _db.Practitioners
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.SourceEventId == sourceEventId, ct);
+    }
 
     public async Task<PagedResult<Practitioner>> SearchAsync(PractitionerFilter filter, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(filter);
+
         IQueryable<Practitioner> query = _db.Practitioners.AsNoTracking();
 
         if (!filter.IncludeDeleted)
@@ -80,5 +86,9 @@ internal sealed class PractitionerRepository : IPractitionerRepository
         return new PagedResult<Practitioner>(items, total, filter.Offset, filter.Count);
     }
 
-    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default) => await _db.Practitioners.AddAsync(practitioner, ct).ConfigureAwait(false);
+    public async Task AddAsync(Practitioner practitioner, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(practitioner);
+        await _db.Practitioners.AddAsync(practitioner, ct).ConfigureAwait(false);
+    }
 }

@@ -39,6 +39,11 @@ csharp_style_expression_bodied_properties = true:suggestion
 # Null checks
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
 
+# CA1062: trust the domain Validate() helper to null-check its arguments.
+# Practitioner.Create / Update call Validate() first; the analyzer recognizes it
+# as a null check if listed here.
+dotnet_code_quality.CA1062.null_check_validation_methods = Validate
+
 # Braces
 csharp_prefer_braces = true:warning
 

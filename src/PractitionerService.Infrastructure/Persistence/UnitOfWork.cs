@@ -29,7 +29,10 @@ internal sealed class UnitOfWork : IUnitOfWork
 
     public void Detach<T>(T entity)
         where T : class
-        => _db.Entry(entity).State = EntityState.Detached;
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        _db.Entry(entity).State = EntityState.Detached;
+    }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

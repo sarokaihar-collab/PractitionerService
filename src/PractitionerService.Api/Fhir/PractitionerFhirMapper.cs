@@ -8,46 +8,48 @@ namespace PractitionerService.Api.Fhir;
 
 public static class PractitionerFhirMapper
 {
-    public static FhirPractitionerResource ToFhir(PractitionerReadModel m)
+    public static FhirPractitionerResource ToFhir(PractitionerReadModel practitionerModel)
     {
+        ArgumentNullException.ThrowIfNull(practitionerModel);
+
         var resource = new FhirPractitionerResource
         {
-            Id = m?.Id.ToString(),
+            Id = practitionerModel.Id.ToString(),
             Meta = new FhirMeta
             {
-                VersionId = m?.Version.ToString(),
-                LastUpdated = m?.UpdatedAt,
+                VersionId = practitionerModel.Version.ToString(),
+                LastUpdated = practitionerModel.UpdatedAt,
             },
-            Active = m.IsActive,
+            Active = practitionerModel.IsActive,
             Name = new List<FhirHumanName>
             {
-                new() { Family = m.LastName, Given = new List<string> { m.FirstName } },
+                new() { Family = practitionerModel.LastName, Given = new List<string> { practitionerModel.FirstName } },
             },
             Telecom = new List<FhirContactPoint>
             {
-                new() { System = FhirConstants.TelecomSystemPhone, Value = m.Phone },
-                new() { System = FhirConstants.TelecomSystemEmail, Value = m.Email }
+                new() { System = FhirConstants.TelecomSystemPhone, Value = practitionerModel.Phone },
+                new() { System = FhirConstants.TelecomSystemEmail, Value = practitionerModel.Email },
             },
             Qualification = new List<FhirQualification>
             {
-                new() { Code = new FhirCodeableConcept { Text = m.Speciality } },
+                new() { Code = new FhirCodeableConcept { Text = practitionerModel.Speciality } },
             },
             Extension = new List<FhirExtension>
             {
-                new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = m.PlaceOfWork },
+                new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = practitionerModel.PlaceOfWork },
                 new()
                    {
-                       Url = FhirConstants.CreatedAtExtensionUrl, ValueString = m.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
+                       Url = FhirConstants.CreatedAtExtensionUrl, ValueString = practitionerModel.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
                    },
             },
         };
 
-        if (!string.IsNullOrEmpty(m.SourceEventId))
+        if (!string.IsNullOrEmpty(practitionerModel.SourceEventId))
         {
             resource.Extension.Add(new FhirExtension
             {
                 Url = FhirConstants.SourceEventIdExtensionUrl,
-                ValueString = m.SourceEventId,
+                ValueString = practitionerModel.SourceEventId,
             });
         }
 
@@ -55,11 +57,19 @@ public static class PractitionerFhirMapper
     }
 
     /// <summary>Extracts sourceEventId from extensions (used when a POST originates from the message bus).</summary>
-    public static string? ExtractSourceEventId(FhirPractitionerResource fhir) =>
-        fhir.Extension?.FirstOrDefault(e => string.Equals(e.Url, FhirConstants.SourceEventIdExtensionUrl, StringComparison.Ordinal))?.ValueString;
+    public static string? ExtractSourceEventId(FhirPractitionerResource fhir)
+    {
+        ArgumentNullException.ThrowIfNull(fhir);
+
+        return fhir.Extension?.FirstOrDefault(e => string.Equals(e.Url, FhirConstants.SourceEventIdExtensionUrl, StringComparison.Ordinal))?.ValueString;
+    }
 
     public static FhirBundle ToBundle(PagedResult<PractitionerReadModel> page, PractitionerFilter filter, string selfBaseUrl)
     {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(filter);
+        ArgumentNullException.ThrowIfNull(selfBaseUrl);
+
         return new FhirBundle
         {
             Total = page.Total,
@@ -68,13 +78,15 @@ public static class PractitionerFhirMapper
             {
                 FullUrl = $"{selfBaseUrl.TrimEnd('/')}/{item.Id}",
                 Resource = ToFhir(item),
-                Search = new FhirBundleEntrySearch { Mode = FhirConstants.BundleEntryModeMatch }
-            }).ToList()
+                Search = new FhirBundleEntrySearch { Mode = FhirConstants.BundleEntryModeMatch },
+            }).ToList(),
         };
     }
 
     public static CreatePractitionerCommand ToCreateCommand(FhirPractitionerResource fhir, string? sourceEventId)
     {
+        ArgumentNullException.ThrowIfNull(fhir);
+
         Validate(fhir);
 
         var (firstName, lastName) = ExtractName(fhir);
@@ -87,6 +99,8 @@ public static class PractitionerFhirMapper
 
     public static UpdatePractitionerCommand ToUpdateCommand(Guid id, FhirPractitionerResource fhir, int? expectedVersion)
     {
+        ArgumentNullException.ThrowIfNull(fhir);
+
         Validate(fhir);
 
         if (!string.IsNullOrEmpty(fhir.Id) &&
@@ -112,7 +126,7 @@ public static class PractitionerFhirMapper
     {
         var links = new List<FhirBundleLink>
             {
-                new() { Relation = FhirConstants.LinkRelationSelf, Url = BuildSearchUrl(baseUrl, filter, filter.Offset) }
+                new() { Relation = FhirConstants.LinkRelationSelf, Url = BuildSearchUrl(baseUrl, filter, filter.Offset) },
             };
 
         if (filter.Offset > 0)
@@ -120,7 +134,7 @@ public static class PractitionerFhirMapper
             links.Add(new FhirBundleLink
             {
                 Relation = FhirConstants.LinkRelationPrevious,
-                Url = BuildSearchUrl(baseUrl, filter, Math.Max(0, filter.Offset - filter.Count))
+                Url = BuildSearchUrl(baseUrl, filter, Math.Max(0, filter.Offset - filter.Count)),
             });
         }
 
@@ -129,14 +143,14 @@ public static class PractitionerFhirMapper
             links.Add(new FhirBundleLink
             {
                 Relation = FhirConstants.LinkRelationNext,
-                Url = BuildSearchUrl(baseUrl, filter, filter.Offset + filter.Count)
+                Url = BuildSearchUrl(baseUrl, filter, filter.Offset + filter.Count),
             });
         }
 
         return links;
     }
 
-    private static string BuildSearchUrl(string baseUrl, PractitionerFilter f, int offset)
+    private static string BuildSearchUrl(string baseUrl, PractitionerFilter filter, int offset)
     {
         var parts = new List<string>();
         void Add(string key, string? value)
@@ -147,24 +161,24 @@ public static class PractitionerFhirMapper
             }
         }
 
-        Add("name", f.NameContains);
-        Add("family", f.FamilyContains);
-        Add("given", f.GivenContains);
-        Add("specialty", f.SpecialityContains);
-        Add("place-of-work", f.PlaceOfWorkContains);
-        Add("email", f.EmailEquals);
-        Add("phone", f.PhoneContains);
-        if (f.Active.HasValue)
+        Add("name", filter.NameContains);
+        Add("family", filter.FamilyContains);
+        Add("given", filter.GivenContains);
+        Add("specialty", filter.SpecialityContains);
+        Add("place-of-work", filter.PlaceOfWorkContains);
+        Add("email", filter.EmailEquals);
+        Add("phone", filter.PhoneContains);
+        if (filter.Active.HasValue)
         {
-            parts.Add($"active={f.Active.Value.ToString().ToLowerInvariant()}");
+            parts.Add($"active={filter.Active.Value.ToString().ToLowerInvariant()}");
         }
 
-        if (f.IncludeDeleted)
+        if (filter.IncludeDeleted)
         {
             parts.Add("_include-deleted=true");
         }
 
-        parts.Add($"_count={f.Count}");
+        parts.Add($"_count={filter.Count}");
         parts.Add($"_offset={offset}");
 
         return $"{baseUrl}?{string.Join("&", parts)}";
@@ -236,7 +250,10 @@ public static class PractitionerFhirMapper
     {
         var value = getValue();
         if (string.IsNullOrWhiteSpace(value))
+        {
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, $"Поле '{fieldPath}' обязательно.");
-        return value!;
+        }
+
+        return value;
     }
 }
