@@ -5,10 +5,10 @@ namespace PractitionerService.Application.Common.Exceptions;
 /// </summary>
 public enum UniqueConstraintField
 {
-    Unknown,
-    Email,
-    Phone,
-    SourceEventId,
+    Unknown = 0,
+    Email = 1,
+    Phone = 2,
+    SourceEventId = 3,
 }
 
 /// <summary>

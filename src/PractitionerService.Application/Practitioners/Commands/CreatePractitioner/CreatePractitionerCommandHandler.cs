@@ -23,6 +23,8 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
 
     public async Task<PractitionerCommandResult> Handle(CreatePractitionerCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         // Idempotency: if SourceEventId (Idempotency-Key) has already been processed, return the existing entity.
         if (!string.IsNullOrWhiteSpace(request.SourceEventId))
         {

@@ -21,6 +21,8 @@ public sealed class DeletePractitionerCommandHandler : IRequestHandler<DeletePra
 
     public async Task<Unit> Handle(DeletePractitionerCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var p = await _repositorysitory.GetByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
         if (p is null)
         {

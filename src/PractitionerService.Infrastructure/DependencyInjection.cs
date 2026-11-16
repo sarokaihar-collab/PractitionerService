@@ -16,9 +16,7 @@ namespace PractitionerService.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<RedisOptions>().Bind(configuration.GetSection(RedisOptions.Section)).ValidateDataAnnotations().ValidateOnStart();

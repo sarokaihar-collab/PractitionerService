@@ -21,6 +21,8 @@ public sealed class UpdatePractitionerCommandHandler : IRequestHandler<UpdatePra
 
     public async Task<PractitionerCommandResult> Handle(UpdatePractitionerCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var p = await _repository.GetByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
         if (p is null)
         {

@@ -26,7 +26,7 @@ public sealed class PractitionerFhirMapperTests
         fhir.Name!.Single().Family.Should().Be("Иванов");
         fhir.Name.Single().Given!.Single().Should().Be("Иван");
         fhir.Telecom!.Should().Contain(t => t.System == FhirConstants.TelecomSystemPhone && t.Value == "+7-900-000-00-00");
-        fhir.Telecom!.Should().Contain(t => t.System == FhirConstants.TelecomSystemEmail && t.Value == "i@example.ru");
+        fhir.Telecom.Should().Contain(t => t.System == FhirConstants.TelecomSystemEmail && t.Value == "i@example.ru");
         fhir.Qualification!.Single().Code!.Text.Should().Be("Кардиолог");
         fhir.Extension!.Should().Contain(e =>
             e.Url == FhirConstants.PlaceOfWorkExtensionUrl && e.ValueString == "ГКБ №1");
@@ -108,8 +108,8 @@ public sealed class PractitionerFhirMapperTests
         bundle.Total.Should().Be(50);
         bundle.Entry!.Should().HaveCount(1);
         bundle.Link!.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationSelf);
-        bundle.Link!.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationPrevious); 
-        bundle.Link!.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationNext);   
+        bundle.Link.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationPrevious);
+        bundle.Link.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationNext);
     }
 
     [Fact]
@@ -120,8 +120,8 @@ public sealed class PractitionerFhirMapperTests
         var bundle = PractitionerFhirMapper.ToBundle(page, new(Count: 10, Offset: 0), "http://test/Practitioner");
 
         bundle.Link!.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationSelf);
-        bundle.Link!.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationNext); 
-        bundle.Link!.Should().NotContain(l => l.Relation == FhirConstants.LinkRelationPrevious); 
+        bundle.Link.Should().ContainSingle(l => l.Relation == FhirConstants.LinkRelationNext);
+        bundle.Link.Should().NotContain(l => l.Relation == FhirConstants.LinkRelationPrevious);
     }
 
     private static PractitionerReadModel NewReadModel() => new(Guid.NewGuid(), "Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now, _now, 3, "evt-1");

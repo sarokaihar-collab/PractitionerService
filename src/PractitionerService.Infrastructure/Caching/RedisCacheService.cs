@@ -18,6 +18,8 @@ internal sealed class RedisCacheService : ICacheService
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(key);
+
         var bytes = await _cache.GetAsync(key, ct).ConfigureAwait(false);
         if (bytes is null || bytes.Length == 0)
         {
@@ -30,6 +32,8 @@ internal sealed class RedisCacheService : ICacheService
     public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(key);
+
         var bytes = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
         var options = new DistributedCacheEntryOptions
         {
@@ -39,5 +43,9 @@ internal sealed class RedisCacheService : ICacheService
         return _cache.SetAsync(key, bytes, options, ct);
     }
 
-    public Task RemoveAsync(string key, CancellationToken ct = default) => _cache.RemoveAsync(key, ct);
+    public Task RemoveAsync(string key, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return _cache.RemoveAsync(key, ct);
+    }
 }

@@ -23,7 +23,10 @@ public static class ExceptionMap
     /// Returns HTTP status and FHIR code for the given exception, or null if unknown.
     /// </summary>
     public static (int Status, string FhirCode)? Resolve(Exception ex)
-        => _map.TryGetValue(ex.GetType(), out var v) ? v : null;
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        return _map.TryGetValue(ex.GetType(), out var v) ? v : null;
+    }
 
     /// <summary>
     /// Resolves the FHIR issue code. For <see cref="FhirValidationException"/>,

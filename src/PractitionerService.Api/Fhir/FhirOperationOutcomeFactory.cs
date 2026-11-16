@@ -6,6 +6,8 @@ public static class FhirOperationOutcomeFactory
 {
     public static FhirOperationOutcome FromException(Exception ex)
     {
+        ArgumentNullException.ThrowIfNull(ex);
+
         var code = ExceptionMap.ResolveFhirCode(ex);
         var diagnostics = ExceptionMap.Resolve(ex) is not null ? ex?.Message : "Внутренняя ошибка сервера.";
 
@@ -25,6 +27,8 @@ public static class FhirOperationOutcomeFactory
 
     public static FhirOperationOutcome FromModelState(IDictionary<string, string[]> errors)
     {
+        ArgumentNullException.ThrowIfNull(errors);
+
         var outcome = new FhirOperationOutcome();
         foreach (var (field, messages) in errors)
         {

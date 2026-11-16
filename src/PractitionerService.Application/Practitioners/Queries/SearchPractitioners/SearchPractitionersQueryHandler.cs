@@ -13,11 +13,13 @@ public sealed class SearchPractitionersQueryHandler : IRequestHandler<SearchPrac
 
     public async Task<PagedResult<PractitionerReadModel>> Handle(SearchPractitionersQuery request, CancellationToken cancellationToken)
     {
-        var f = request?.Filter;
-        var normalized = f with
+        ArgumentNullException.ThrowIfNull(request);
+
+        var filter = request?.Filter;
+        var normalized = filter with
         {
-            Offset = Math.Max(0, f.Offset),
-            Count = f.Count <= 0 ? _defaultCount : Math.Min(f.Count, _maxCount),
+            Offset = Math.Max(0, filter.Offset),
+            Count = filter.Count <= 0 ? _defaultCount : Math.Min(filter.Count, _maxCount),
         };
 
         var page = await _repository.SearchAsync(normalized, cancellationToken).ConfigureAwait(false);

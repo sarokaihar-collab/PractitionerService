@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PractitionerService.Infrastructure.Persistence;
 
 namespace PractitionerService.Api.Configuration;
