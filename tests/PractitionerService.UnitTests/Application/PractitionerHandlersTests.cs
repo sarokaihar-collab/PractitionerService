@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Diagnostics;
 using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Application.Practitioners;
 using PractitionerService.Application.Practitioners.Queries;
@@ -18,6 +19,8 @@ public sealed class PractitionerHandlersTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IDateTimeProvider _clock = Substitute.For<IDateTimeProvider>();
 
+    private readonly IPractitionerMetrics _metrics = Substitute.For<IPractitionerMetrics>();
+
     public PractitionerHandlersTests()
     {
         _clock.UtcNow.Returns(_now);
@@ -30,8 +33,7 @@ public sealed class PractitionerHandlersTests
 
         _repository.FindBySourceEventIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(existing);
 
-        var handler = new CreatePractitionerCommandHandler(
-            _repository, _unitOfWork, _clock, NullLogger<CreatePractitionerCommandHandler>.Instance);
+        var handler = new CreatePractitionerCommandHandler(_repository, _unitOfWork, _clock, NullLogger<CreatePractitionerCommandHandler>.Instance, _metrics);
         var cmd = new CreatePractitionerCommand("Другой", "Врач", "+7-900-000-00-99", "Хирург", "ГКБ №9", "other@example.ru", true, "evt-1");
 
         var result = await handler.Handle(cmd, default);
@@ -47,7 +49,7 @@ public sealed class PractitionerHandlersTests
         Practitioner? captured = null;
         _repository.When(r => r.AddAsync(Arg.Any<Practitioner>(), Arg.Any<CancellationToken>())).Do(ci => captured = ci.Arg<Practitioner>());
 
-        var handler = new CreatePractitionerCommandHandler(_repository, _unitOfWork, _clock, NullLogger<CreatePractitionerCommandHandler>.Instance);
+        var handler = new CreatePractitionerCommandHandler(_repository, _unitOfWork, _clock, NullLogger<CreatePractitionerCommandHandler>.Instance, _metrics);
         var cmd = new CreatePractitionerCommand("Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", null, null);
 
         var result = await handler.Handle(cmd, default);
@@ -61,6 +63,7 @@ public sealed class PractitionerHandlersTests
 
         await _repository.Received(1).AddAsync(Arg.Any<Practitioner>(), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        _metrics.Received(1).PractitionerCreated();
     }
 
     [Fact]

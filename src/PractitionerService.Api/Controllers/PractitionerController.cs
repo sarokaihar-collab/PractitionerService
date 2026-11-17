@@ -46,12 +46,12 @@ public sealed class PractitionerController : ControllerBase
             var key = Request.Headers["Idempotency-Key"].FirstOrDefault();
             if (!string.IsNullOrEmpty(key))
             {
-                if (key.Length > 200)
+                if (key.Length > FhirConstants.IdempotencyKeyMaxLength)
                 {
-                    throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Заголовок Idempotency-Key не должен превышать 200 символов (передано {key.Length}).");
+                    throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Заголовок Idempotency-Key не должен превышать {FhirConstants.IdempotencyKeyMaxLength} символов (передано {key.Length}).");
                 }
 
-                sourceEventId = $"idem:{key}";
+                sourceEventId = FhirConstants.IdempotencyKeyPrefix + key;
             }
         }
 

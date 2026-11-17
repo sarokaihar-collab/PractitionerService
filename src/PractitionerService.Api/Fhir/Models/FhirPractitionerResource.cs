@@ -30,12 +30,13 @@ public sealed class FhirPractitionerResource
     public FhirMeta? Meta { get; set; }
 
     /// <summary>
-    /// Дополнительные поля. Используются для передачи места работы
-    /// (http://example.org/fhir/StructureDefinition/place-of-work) и
-    /// идентификатора события (http://example.org/fhir/StructureDefinition/source-event-id).
+    /// Вложенные (contained) ресурсы. Используется для передачи места работы
+    /// в виде Organization с id = "place-of-work". Ссылка на вложенный ресурс — через
+    /// qualification[0].issuer.reference = "#place-of-work".
     /// </summary>
-    [JsonPropertyName("extension")]
-    public List<FhirExtension>? Extension { get; set; }
+    [JsonPropertyName("contained")]
+    [JsonPropertyOrder(3)]
+    public List<FhirOrganization>? Contained { get; set; }
 
     /// <summary>
     /// Признак активности врача (true — активен, false — неактивен). Опционально, при создании по умолчанию true.

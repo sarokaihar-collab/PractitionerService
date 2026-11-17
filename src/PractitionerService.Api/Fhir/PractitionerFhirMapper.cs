@@ -8,52 +8,41 @@ namespace PractitionerService.Api.Fhir;
 
 public static class PractitionerFhirMapper
 {
-    public static FhirPractitionerResource ToFhir(PractitionerReadModel practitionerModel)
+    public static FhirPractitionerResource ToFhir(PractitionerReadModel m)
     {
-        ArgumentNullException.ThrowIfNull(practitionerModel);
+        ArgumentNullException.ThrowIfNull(m);
 
-        var resource = new FhirPractitionerResource
+        return new FhirPractitionerResource
         {
-            Id = practitionerModel.Id.ToString(),
-            Meta = new FhirMeta
+            Id = m.Id.ToString(),
+            Meta = BuildMeta(m),
+            Contained = new()
+        {
+            new FhirOrganization
             {
-                VersionId = practitionerModel.Version.ToString(),
-                LastUpdated = practitionerModel.UpdatedAt,
+                Id = FhirConstants.ContainedOrganizationId,
+                Name = m.PlaceOfWork,
             },
-            Active = practitionerModel.IsActive,
-            Name = new List<FhirHumanName>
+        },
+            Active = m.IsActive,
+            Name = new() { new() { Family = m.LastName, Given = new() { m.FirstName } } },
+            Telecom = new()
+        {
+            new() { System = FhirConstants.TelecomSystemPhone, Value = m.Phone },
+            new() { System = FhirConstants.TelecomSystemEmail, Value = m.Email },
+        },
+            Qualification = new()
+        {
+            new()
             {
-                new() { Family = practitionerModel.LastName, Given = new List<string> { practitionerModel.FirstName } },
+                Code = new FhirCodeableConcept { Text = m.Speciality },
+                Issuer = new FhirReference
+                {
+                    Reference = $"#{FhirConstants.ContainedOrganizationId}",
+                },
             },
-            Telecom = new List<FhirContactPoint>
-            {
-                new() { System = FhirConstants.TelecomSystemPhone, Value = practitionerModel.Phone },
-                new() { System = FhirConstants.TelecomSystemEmail, Value = practitionerModel.Email },
-            },
-            Qualification = new List<FhirQualification>
-            {
-                new() { Code = new FhirCodeableConcept { Text = practitionerModel.Speciality } },
-            },
-            Extension = new List<FhirExtension>
-            {
-                new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = practitionerModel.PlaceOfWork },
-                new()
-                   {
-                       Url = FhirConstants.CreatedAtExtensionUrl, ValueString = practitionerModel.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
-                   },
-            },
+        },
         };
-
-        if (!string.IsNullOrEmpty(practitionerModel.SourceEventId))
-        {
-            resource.Extension.Add(new FhirExtension
-            {
-                Url = FhirConstants.SourceEventIdExtensionUrl,
-                ValueString = practitionerModel.SourceEventId,
-            });
-        }
-
-        return resource;
     }
 
     /// <summary>Extracts sourceEventId from extensions (used when a POST originates from the message bus).</summary>
@@ -61,7 +50,7 @@ public static class PractitionerFhirMapper
     {
         ArgumentNullException.ThrowIfNull(fhir);
 
-        return fhir.Extension?.FirstOrDefault(e => string.Equals(e.Url, FhirConstants.SourceEventIdExtensionUrl, StringComparison.Ordinal))?.ValueString;
+        return fhir.Meta?.Tag?.FirstOrDefault(t => string.Equals(t.System, FhirConstants.MetaTagSystemSourceEventId, StringComparison.Ordinal))?.Code;
     }
 
     public static FhirBundle ToBundle(PagedResult<PractitionerReadModel> page, PractitionerFilter filter, string selfBaseUrl)
@@ -102,9 +91,8 @@ public static class PractitionerFhirMapper
         ArgumentNullException.ThrowIfNull(fhir);
 
         Validate(fhir);
-
         if (!string.IsNullOrEmpty(fhir.Id) &&
-            !Guid.TryParse(fhir.Id, out var bodyId))
+            !Guid.TryParse(fhir.Id, out _))
         {
             throw new FhirValidationException(FhirConstants.IssueTypeStructure, $"Поле 'id' в теле не является валидным UUID: '{fhir.Id}'.");
         }
@@ -120,6 +108,58 @@ public static class PractitionerFhirMapper
         var placeOfWork = ExtractPlaceOfWork(fhir);
 
         return new UpdatePractitionerCommand(id, firstName, lastName, phone, speciality, placeOfWork, email, fhir.Active, expectedVersion);
+    }
+
+    private static FhirMeta BuildMeta(PractitionerReadModel m)
+    {
+        var tags = new List<FhirCoding>
+    {
+        new()
+        {
+            System = FhirConstants.MetaTagSystemCreatedAt,
+            Code = m.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
+        },
+    };
+
+        if (!string.IsNullOrEmpty(m.SourceEventId))
+        {
+            tags.Add(new FhirCoding
+            {
+                System = FhirConstants.MetaTagSystemSourceEventId,
+                Code = m.SourceEventId,
+            });
+        }
+
+        return new FhirMeta
+        {
+            VersionId = m.Version.ToString(),
+            LastUpdated = m.UpdatedAt,
+            Tag = tags,
+        };
+    }
+
+    private static string ExtractPlaceOfWork(FhirPractitionerResource fhir)
+    {
+        var issuerRef = fhir.Qualification?
+            .FirstOrDefault(q => !string.IsNullOrWhiteSpace(q.Code?.Text))?
+            .Issuer?
+            .Reference;
+
+        if (string.IsNullOrWhiteSpace(issuerRef) || !issuerRef.StartsWith('#'))
+        {
+            throw new FhirValidationException(FhirConstants.IssueTypeRequired, $"Поле 'qualification[0].issuer.reference' обязательно и должно указывать на contained Organization (например, '#{FhirConstants.ContainedOrganizationId}').");
+        }
+
+        var containedId = issuerRef[1..];
+        var org = fhir.Contained?.FirstOrDefault(o =>
+            string.Equals(o.Id, containedId, StringComparison.Ordinal));
+
+        if (org is null || string.IsNullOrWhiteSpace(org.Name))
+        {
+            throw new FhirValidationException(FhirConstants.IssueTypeRequired, $"Contained Organization с id '{containedId}' не найдена или не содержит 'name'.");
+        }
+
+        return org.Name;
     }
 
     private static List<FhirBundleLink> BuildLinks(PractitionerFilter filter, string baseUrl, int total)
@@ -221,13 +261,13 @@ public static class PractitionerFhirMapper
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Поле 'telecom' обязательно и должно содержать хотя бы один контакт (phone и email).");
         }
 
-        var phone = fhir.Telecom.FirstOrDefault(t => t.System == FhirConstants.TelecomSystemPhone)?.Value;
+        var phone = fhir.Telecom.FirstOrDefault(t => string.Equals(t.System, FhirConstants.TelecomSystemPhone, StringComparison.Ordinal))?.Value;
         if (string.IsNullOrWhiteSpace(phone))
         {
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Не найден контакт с 'system=phone' в 'telecom'.");
         }
 
-        var email = fhir.Telecom.FirstOrDefault(t => t.System == FhirConstants.TelecomSystemEmail)?.Value;
+        var email = fhir.Telecom.FirstOrDefault(t => string.Equals(t.System, FhirConstants.TelecomSystemEmail, StringComparison.Ordinal))?.Value;
         if (string.IsNullOrWhiteSpace(email))
         {
             throw new FhirValidationException(FhirConstants.IssueTypeRequired, "Не найден контакт с 'system=email' в 'telecom'.");
@@ -238,9 +278,6 @@ public static class PractitionerFhirMapper
 
     private static string ExtractSpeciality(FhirPractitionerResource fhir) =>
         RequireFhir(() => fhir.Qualification?.FirstOrDefault(q => !string.IsNullOrWhiteSpace(q.Code?.Text))?.Code?.Text, "qualification[0].code.text");
-
-    private static string ExtractPlaceOfWork(FhirPractitionerResource fhir) =>
-        RequireFhir(() => fhir.Extension?.FirstOrDefault(e => string.Equals(e.Url, FhirConstants.PlaceOfWorkExtensionUrl, StringComparison.Ordinal))?.ValueString, $"extension[{FhirConstants.PlaceOfWorkExtensionUrl}]");
 
     /// <summary>
     /// Requires a value to be non-empty; otherwise throws a FHIR validation error

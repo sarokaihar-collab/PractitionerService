@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Diagnostics;
 using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Domain.Practitioners;
 
@@ -10,15 +11,17 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
 {
     private readonly IPractitionerRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPractitionerMetrics _metrics;
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<CreatePractitionerCommandHandler> _logger;
 
-    public CreatePractitionerCommandHandler(IPractitionerRepository repository, IUnitOfWork unitOfWork, IDateTimeProvider clock, ILogger<CreatePractitionerCommandHandler> logger)
+    public CreatePractitionerCommandHandler(IPractitionerRepository repository, IUnitOfWork unitOfWork, IDateTimeProvider clock, ILogger<CreatePractitionerCommandHandler> logger, IPractitionerMetrics metrics)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task<PractitionerCommandResult> Handle(CreatePractitionerCommand request, CancellationToken cancellationToken)
@@ -57,6 +60,8 @@ public sealed class CreatePractitionerCommandHandler : IRequestHandler<CreatePra
 
             throw;
         }
+
+        _metrics.PractitionerCreated();
 
         return new PractitionerCommandResult(practitioner.Id, practitioner.Version);
     }

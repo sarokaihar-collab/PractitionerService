@@ -102,16 +102,32 @@ email, isActive) и служебные (createdAt, updatedAt, version, isDeleted
 | `email` | `Practitioner.telecom[system=email].value` | |
 | `isActive` | `Practitioner.active` | Если не указан при создании — `true` |
 | `speciality` | `Practitioner.qualification[0].code.text` | |
-| `placeOfWork` | `extension[url=.../place-of-work].valueString` | В R5 у Practitioner нет прямого «места работы» |
-| `createdAt` | `extension[url=.../created-at].valueString` | ISO 8601 |
+| `placeOfWork` | `contained[Organization].name` + `qualification[0].issuer.reference` | `issuer.reference = "#place-of-work"` |
+| `createdAt` | `meta.tag[system=urn:practitioner-service:meta:created-at].code` | ISO 8601 |
 | `updatedAt` | `meta.lastUpdated` | |
 | `version` | `meta.versionId` | |
-| `sourceEventId` | `extension[url=.../source-event-id].valueString` | Служебное, для идемпотентности |
+| `sourceEventId` | `meta.tag[system=urn:practitioner-service:meta:source-event-id].code` | Служебное, для идемпотентности |
 
 **Массивы FHIR:** берём только первый элемент (`name[0]`, `given[0]`, первый
 `telecom[system=phone]`, первый `telecom[system=email]`, `qualification[0]`).
 Остальные **молча игнорируются**. В проде — либо явное отклонение (`422`), либо
 хранение всех значений (изменение доменной модели).
+
+### FHIR: без кастомных extension URL
+
+Для полей, которых нет в стандартной модели Practitioner, используем **стандартные
+FHIR-механизмы**, а не кастомные `extension` с `http://example.org/...`:
+
+- **`placeOfWork`** — через `contained` Organization + `qualification.issuer.reference`.
+  Это канонический FHIR-способ связать Practitioner с местом работы без создания
+  отдельного ресурса `PractitionerRole`.
+- **`createdAt`** — через `meta.tag` с системой `urn:practitioner-service:meta:created-at`.
+  URN — не URL, это стандартный FHIR-паттерн для служебных данных.
+- **`sourceEventId`** — через `meta.tag` с системой `urn:practitioner-service:meta:source-event-id`.
+
+**Почему не `extension`:** `extension` с кастомными `http://example.org/...` —
+юридически допустимо, но выглядит как «костыль». `contained` + `meta.tag` — оба
+механизма стандартизированы FHIR R5 и не требуют внешних URL.
 
 ### Семантика HTTP-статусов
 

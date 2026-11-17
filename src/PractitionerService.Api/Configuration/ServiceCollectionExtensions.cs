@@ -42,7 +42,7 @@ public static class ServiceCollectionExtensions
             {
                 var errors = context.ModelState
                     .Where(kv => kv.Value?.Errors.Count > 0)
-                    .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+                    .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray(), StringComparer.Ordinal);
 
                 var outcome = FhirOperationOutcomeFactory.FromModelState(errors);
                 return new BadRequestObjectResult(outcome)
