@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace PractitionerService.Api.Fhir.Models;
 
@@ -19,6 +20,7 @@ public sealed class FhirPractitionerResource
     /// </summary>
     [JsonPropertyName("id")]
     [JsonPropertyOrder(1)]
+    [SwaggerSchema(ReadOnly = true)]
     public string? Id { get; set; }
 
     /// <summary>
@@ -27,6 +29,7 @@ public sealed class FhirPractitionerResource
     /// </summary>
     [JsonPropertyName("meta")]
     [JsonPropertyOrder(2)]
+    [SwaggerSchema(ReadOnly = true)]
     public FhirMeta? Meta { get; set; }
 
     /// <summary>
