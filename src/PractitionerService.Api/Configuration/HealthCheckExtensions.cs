@@ -7,11 +7,7 @@ public static class HealthCheckExtensions
 {
     public static IServiceCollection AddAppHealthChecks(this IServiceCollection services)
     {
-        services.AddHealthChecks()
-            .AddDbContextCheck<PractitionerDbContext>(
-                name: "database",
-                failureStatus: HealthStatus.Unhealthy);
-
+        services.AddHealthChecks().AddDbContextCheck<PractitionerDbContext>(name: "database", failureStatus: HealthStatus.Unhealthy);
         return services;
     }
 }

@@ -24,14 +24,15 @@ public sealed class PractitionerFhirMapperTests
         fhir.Meta!.VersionId.Should().Be("3");
         fhir.Meta.LastUpdated.Should().Be(rm.UpdatedAt);
         fhir.Name!.Single().Family.Should().Be("Иванов");
-        fhir.Name.Single().Given!.Single().Should().Be("Иван");
+        fhir.Name!.Single().Given!.Single().Should().Be("Иван");
         fhir.Telecom!.Should().Contain(t => t.System == FhirConstants.TelecomSystemPhone && t.Value == "+7-900-000-00-00");
         fhir.Telecom.Should().Contain(t => t.System == FhirConstants.TelecomSystemEmail && t.Value == "i@example.ru");
-        fhir.Qualification!.Single().Code!.Text.Should().Be("Кардиолог");
-        fhir.Extension!.Should().Contain(e =>
-            e.Url == FhirConstants.PlaceOfWorkExtensionUrl && e.ValueString == "ГКБ №1");
-        fhir.Extension.Should().Contain(e =>
-            e.Url == FhirConstants.SourceEventIdExtensionUrl && e.ValueString == "evt-1");
+        fhir.Contained!.Single().Name.Should().Be("ГКБ №1");
+        fhir.Qualification!.Single().Issuer!.Reference.Should().Be("#place-of-work");
+        fhir.Meta.Tag!.Should().Contain(t =>
+            t.System == FhirConstants.MetaTagSystemCreatedAt);
+        fhir.Meta.Tag.Should().Contain(t =>
+            t.System == FhirConstants.MetaTagSystemSourceEventId && t.Code == "evt-1");
     }
 
     [Fact]
@@ -87,10 +88,20 @@ public sealed class PractitionerFhirMapperTests
     }
 
     [Fact]
-    public void ExtractSourceEventIdReturnsValueFromExtension()
+    public void ExtractSourceEventId_ReturnsValueFromMetaTag()
     {
         var fhir = NewFhirResource();
-        fhir.Extension!.Add(new() { Url = FhirConstants.SourceEventIdExtensionUrl, ValueString = "evt-42" });
+        fhir.Meta = new()
+        {
+            Tag = new()
+        {
+            new()
+            {
+                System = FhirConstants.MetaTagSystemSourceEventId,
+                Code = "evt-42",
+            },
+        },
+        };
 
         var result = PractitionerFhirMapper.ExtractSourceEventId(fhir);
 
@@ -124,22 +135,41 @@ public sealed class PractitionerFhirMapperTests
         bundle.Link.Should().NotContain(l => l.Relation == FhirConstants.LinkRelationPrevious);
     }
 
+    [Fact]
+    public void ToCreateCommandWithoutContainedOrganizationThrowsFhirValidation()
+    {
+        var fhir = NewFhirResource();
+        fhir.Contained = null;
+
+        var act = () => PractitionerFhirMapper.ToCreateCommand(fhir, null);
+
+        act.Should().Throw<FhirValidationException>()
+            .WithMessage("*contained Organization*");
+    }
+
     private static PractitionerReadModel NewReadModel() => new(Guid.NewGuid(), "Иван", "Иванов", "+7-900-000-00-00", "Кардиолог", "ГКБ №1", "i@example.ru", true, _now, _now, 3, "evt-1");
 
     private static FhirPractitionerResource NewFhirResource() => new()
     {
         ResourceType = "Practitioner",
         Active = true,
+        Contained = new()
+    {
+        new() { Id = FhirConstants.ContainedOrganizationId, Name = "ГКБ №1" },
+    },
         Name = new() { new() { Family = "Иванов", Given = new() { "Иван" } } },
         Telecom = new()
+    {
+        new() { System = "phone", Value = "+7-900-000-00-00" },
+        new() { System = "email", Value = "i@example.ru" },
+    },
+        Qualification = new()
+    {
+        new()
         {
-            new() { System = "phone", Value = "+7-900-000-00-00" },
-            new() { System = "email", Value = "i@example.ru" },
+            Code = new() { Text = "Кардиолог" },
+            Issuer = new() { Reference = $"#{FhirConstants.ContainedOrganizationId}" },
         },
-        Qualification = new() { new() { Code = new() { Text = "Кардиолог" } } },
-        Extension = new()
-        {
-            new() { Url = FhirConstants.PlaceOfWorkExtensionUrl, ValueString = "ГКБ №1" },
-        },
+    },
     };
 }

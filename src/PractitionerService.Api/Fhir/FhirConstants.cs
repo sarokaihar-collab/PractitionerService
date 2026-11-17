@@ -2,13 +2,13 @@ namespace PractitionerService.Api.Fhir;
 
 public static class FhirConstants
 {
-    public const string CreatedAtExtensionUrl = "http://example.org/fhir/StructureDefinition/created-at";
     public const string ResourceTypePractitioner = "Practitioner";
     public const string ResourceTypeBundle = "Bundle";
     public const string ResourceTypeOperationOutcome = "OperationOutcome";
     public const string MediaTypeFhirJson = "application/fhir+json";
-    public const string PlaceOfWorkExtensionUrl = "http://example.org/fhir/StructureDefinition/place-of-work";
-    public const string SourceEventIdExtensionUrl = "http://example.org/fhir/StructureDefinition/source-event-id";
+    public const string MetaTagSystemCreatedAt = "urn:practitioner-service:meta:created-at";
+    public const string MetaTagSystemSourceEventId = "urn:practitioner-service:meta:source-event-id";
+    public const string ContainedOrganizationId = "place-of-work";
     public const string IssueTypeNotFound = "not-found";
     public const string IssueTypeDeleted = "deleted";
     public const string IssueTypeConflict = "conflict";
@@ -37,4 +37,7 @@ public static class FhirConstants
 
     // Event types (Redis Streams)
     public const string EventTypeCreated = "created";
+
+    public const string IdempotencyKeyPrefix = "idem:";
+    public const int IdempotencyKeyMaxLength = 200;
 }

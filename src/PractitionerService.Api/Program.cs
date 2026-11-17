@@ -12,6 +12,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiControllers();
 builder.Services.AddSwaggerDocumentation();
 builder.Services.AddAppHealthChecks();
+builder.Services.AddAppOpenTelemetry();
 
 // === App ===
 var app = builder.Build();
@@ -24,6 +25,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.MapPrometheusScrapingEndpoint();
 
 if (app.Environment.IsDevelopment())
 {

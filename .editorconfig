@@ -171,6 +171,8 @@ dotnet_diagnostic.SA1652.severity = none # Use <inheritdoc> correctly
 dotnet_diagnostic.CA1848.severity = none
 dotnet_diagnostic.CA1873.severity = none
 dotnet_diagnostic.RCS1194.severity = none
+dotnet_diagnostic.MA0016.severity = none
+
 
 # =========================================================
 # Removed rules from the original .ruleset
