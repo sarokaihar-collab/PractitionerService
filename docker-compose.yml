@@ -45,6 +45,12 @@ services:
       Redis__Configuration: "redis:6379"
     ports:
       - "${API_HOST_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
       
   prometheus:
     image: prom/prometheus:latest

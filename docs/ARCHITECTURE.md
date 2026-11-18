@@ -284,15 +284,19 @@ Stateless: `_count` (по умолчанию 20, максимум 100) и `_offs
 `CreatePractitionerCommandHandler` при существующем `sourceEventId` возвращает уже созданного
 врача, consumer делает `XACK`.
 
-### Ограничения consumer'а
+### Отказоустойчивость consumer'а
 
-- `XACK` делается **даже при ошибке обработки** (чтобы «битое» сообщение не висело в Pending).
-  В проде нужен retry counter + dead-letter queue + `XAUTOCLAIM` для recovery.
-- Только `type=created`. Расширение на `updated`/`deleted` — механический `switch` в
-  `ProcessAsync` + маппинг на `UpdatePractitionerCommand`/`DeletePractitionerCommand`.
-- Polling-модель (`Task.Delay(500)` + `XREADGROUP`), не `XREADGROUP BLOCK`. Для тестового —
-  проще; в проде — `BLOCK` экономит запросы к Redis.
-- JSON-ошибки логируются с содержимым payload (первые 500 символов) для диагностики.
+- **ACK только при успехе или бизнес-ошибке.** Бизнес-ошибки (валидация, дубли,
+  битый JSON) → ACK + DLQ (сообщение никогда не станет валидным). Инфраструктурные
+  ошибки (БД недоступна, таймаут) → **без ACK**, сообщение остаётся в PEL.
+- **XAUTOCLAIM каждые 2 минуты.** Зависшие сообщения (consumer упал) перехватываются
+  другим живым consumer'ом, переобрабатываются.
+- **Счётчик попыток.** На каждое перехваченное сообщение инкрементится хэш
+  `event:attempts:{messageId}`. После `MaxRetries=5` → DLQ с `reason=retries-exhausted`.
+- **DLQ-стрим** `practitioner-events-dlq` с `originalMessageId`, `reason`, `movedAt`.
+- **Метрики:** `events.processed{status}` (success/skipped/business-error) и
+  `events.failed{reason}` (infrastructure/exhausted). Алерты в проде.
+- **Идемпотентность** через `sourceEventId` — повторная доставка не создаёт дубль.
 
 ## Индексы
 
@@ -356,6 +360,13 @@ GitHub Actions (`.github/workflows/ci.yml`) прогоняет:
   с dev-fallback'ами. `.env` в `.gitignore`; в git только `.env.example`.
 - **`PractitionerDbContextFactory`** (design-time) — использует нерабочий placeholder-пароль.
   Реальный `dotnet ef database update` требует явной установки `ConnectionStrings__Default`.
+  
+### PII в логах
+
+- **HTTP query string** не логируется (`AddHttpLogging` ограничен method/path/status;
+  `Microsoft.AspNetCore.Hosting.Diagnostics` на `Warning`).
+- **Consumer** при ошибке парсинга JSON логирует только длину, без содержимого.
+- **EF Core** SQL-параметры не логируются (`LogLevel=Warning`).  
 
 ## Конфигурация
 
@@ -372,6 +383,17 @@ GitHub Actions (`.github/workflows/ci.yml`) прогоняет:
 - `appsettings.Development.json` (dev-креды) — перекрывает при `ASPNETCORE_ENVIRONMENT=Development`;
 - env vars (`ConnectionStrings__Default`, `Redis__Configuration`) — приоритет выше,
   используются в Docker Compose.
+  
+### Инвалидация кэша — отказоустойчивость
+
+Инвалидация обёрнута в `try/catch` в `Update` / `Delete` handler'ах. Если
+`RemoveAsync` падает (Redis недоступен) — операция успешна, кэш живёт до TTL
+(5 минут). Счётчик `cache.invalidations{status=failure}` + алерт в проде.
+
+**Остаточный race:** между `SaveChanges` и `RemoveAsync` параллельный GET
+может положить в кэш старое значение. Окно — микросекунды. Для устранения
+в проде: versioned keys (`practitioner:id:{guid}:v{version}`) или outbox-паттерн.
+Для тестового — риск осознан.
 
 ## Версионирование
 

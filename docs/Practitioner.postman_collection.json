@@ -43,15 +43,15 @@
       "name": "Health",
       "item": [
         {
-          "name": "1. Health check",
+          "name": "1. Health check (live + ready)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('body = Healthy', () => pm.expect(pm.response.text().trim()).to.eql('Healthy'));"
+                  "pm.test('ready = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ready = Healthy', () => pm.expect(pm.response.text().trim()).to.eql('Healthy'));"
                 ]
               }
             }
@@ -59,7 +59,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/health"
+            "url": "{{baseUrl}}/health/ready"
           }
         }
       ]

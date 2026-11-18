@@ -15,7 +15,7 @@ public sealed class SearchPractitionersQueryHandler : IRequestHandler<SearchPrac
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var filter = request?.Filter;
+        var filter = request.Filter;
         var normalized = filter with
         {
             Offset = Math.Max(0, filter.Offset),

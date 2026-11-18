@@ -1,6 +1,8 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PractitionerService.Application.Common;
+using PractitionerService.Application.Common.Diagnostics;
 using PractitionerService.Application.Common.Exceptions;
 using PractitionerService.Application.Practitioners;
 using PractitionerService.Application.Practitioners.Queries;
@@ -14,7 +16,16 @@ public sealed class PractitionerQueryHandlersTests
 
     private readonly IPractitionerRepository _repo = Substitute.For<IPractitionerRepository>();
     private readonly ICacheService _cache = Substitute.For<ICacheService>();
+    private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
+    private readonly IDateTimeProvider _clock = Substitute.For<IDateTimeProvider>();
+    private readonly IPractitionerMetrics _metrics = Substitute.For<IPractitionerMetrics>();
 
+    public PractitionerQueryHandlersTests()
+    {
+        _clock.UtcNow.Returns(_now.AddHours(1));
+    }
+
+    // ==== GetPractitionerByIdQueryHandler ====
     [Fact]
     public async Task GetByIdCacheMissLoadsFromRepoAndCaches()
     {
@@ -51,12 +62,11 @@ public sealed class PractitionerQueryHandlersTests
         await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    // ==== SearchPractitionersQueryHandler ====
     [Fact]
     public async Task SearchClampsCountToMaxAndOffsetToNonNegative()
     {
-        _repo.SearchAsync(Arg.Any<PractitionerFilter>(), Arg.Any<CancellationToken>())
-             .Returns(new PagedResult<Practitioner>(
-                 Array.Empty<Practitioner>(), 0, 0, 100));
+        _repo.SearchAsync(Arg.Any<PractitionerFilter>(), Arg.Any<CancellationToken>()).Returns(new PagedResult<Practitioner>(Array.Empty<Practitioner>(), 0, 0, 100));
 
         var handler = new SearchPractitionersQueryHandler(_repo);
         await handler.Handle(new SearchPractitionersQuery(new PractitionerFilter(Count: 5000, Offset: -10)), default);
@@ -75,22 +85,40 @@ public sealed class PractitionerQueryHandlersTests
         await _repo.Received(1).SearchAsync(Arg.Is<PractitionerFilter>(f => f.Count == 20), Arg.Any<CancellationToken>());
     }
 
+    // ==== DeletePractitionerCommandHandler ====
     [Fact]
     public async Task DeleteSuccessMarksDeletedAndInvalidatesCache()
     {
         var p = NewPractitioner();
         _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
-        var uow = Substitute.For<IUnitOfWork>();
-        var clock = Substitute.For<IDateTimeProvider>();
-        clock.UtcNow.Returns(_now.AddHours(1));
+        var handler = new DeletePractitionerCommandHandler(_repo, _uow, _clock, _cache, _metrics, NullLogger<DeletePractitionerCommandHandler>.Instance);
 
-        var handler = new DeletePractitionerCommandHandler(_repo, uow, clock, _cache);
         await handler.Handle(new DeletePractitionerCommand(p.Id), default);
 
         p.IsDeleted.Should().BeTrue();
-        await uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveAsync(Arg.Is<string>(k => k.Contains(p.Id.ToString())), Arg.Any<CancellationToken>());
+        _metrics.Received(1).CacheInvalidationSucceeded();
+        _metrics.DidNotReceive().CacheInvalidationFailed();
+    }
+
+    [Fact]
+    public async Task DeleteCacheInvalidationFailsStillSucceedsAndTracksMetric()
+    {
+        var p = NewPractitioner();
+        _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
+
+        _cache.When(c => c.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())).Do(_ => throw new InvalidOperationException("Redis down"));
+
+        var handler = new DeletePractitionerCommandHandler(_repo, _uow, _clock, _cache, _metrics, NullLogger<DeletePractitionerCommandHandler>.Instance);
+
+        // Should not throw — cache failure is tolerated
+        await handler.Handle(new DeletePractitionerCommand(p.Id), default);
+
+        p.IsDeleted.Should().BeTrue();
+        _metrics.Received(1).CacheInvalidationFailed();
+        _metrics.DidNotReceive().CacheInvalidationSucceeded();
     }
 
     [Fact]
@@ -100,22 +128,22 @@ public sealed class PractitionerQueryHandlersTests
         p.MarkAsDeleted(_now);
         _repo.GetByIdAsync(p.Id, Arg.Any<CancellationToken>()).Returns(p);
 
-        var uow = Substitute.For<IUnitOfWork>();
-        var clock = Substitute.For<IDateTimeProvider>();
+        var handler = new DeletePractitionerCommandHandler(_repo, _uow, _clock, _cache, _metrics, NullLogger<DeletePractitionerCommandHandler>.Instance);
 
-        var handler = new DeletePractitionerCommandHandler(_repo, uow, clock, _cache);
         var act = () => handler.Handle(new DeletePractitionerCommand(p.Id), default);
 
         await act.Should().ThrowAsync<GoneException>();
-        await uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task DeleteNotFoundThrowsNotFoundException()
     {
-        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Practitioner?)null);
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((Practitioner?)null);
 
-        var handler = new DeletePractitionerCommandHandler(_repo, Substitute.For<IUnitOfWork>(), Substitute.For<IDateTimeProvider>(), _cache);
+        var handler = new DeletePractitionerCommandHandler(_repo, _uow, _clock, _cache, _metrics, NullLogger<DeletePractitionerCommandHandler>.Instance);
+
         var act = () => handler.Handle(new DeletePractitionerCommand(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();

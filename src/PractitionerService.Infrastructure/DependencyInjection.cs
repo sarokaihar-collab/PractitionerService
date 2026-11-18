@@ -32,7 +32,14 @@ public static class DependencyInjection
         services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
             var redis = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
-            return ConnectionMultiplexer.Connect(redis.Configuration);
+            var config = ConfigurationOptions.Parse(redis.Configuration);
+            config.AbortOnConnectFail = false;                    // don't crash if Redis is briefly down at startup
+            config.ConnectRetry = 3;
+            config.ConnectTimeout = 5000;
+            config.ReconnectRetryPolicy = new ExponentialRetry(1000);
+            config.KeepAlive = 60;
+
+            return ConnectionMultiplexer.Connect(config);
         });
 
         // === IDistributedCache backed by Redis ===

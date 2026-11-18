@@ -67,8 +67,11 @@ docker compose up --build
 ### 1. Health
 
 ```bash
-curl http://localhost:8081/health
-# Ожидаемо: Healthy
+| Endpoint        | Назначение                               | Использование                                       |
+|-----------------|------------------------------------------|-----------------------------------------------------|
+| `/health/live`  | Процесс жив (без проверок зависимостей)  | `livenessProbe` в Kubernetes                        |
+| `/health/ready` | БД + Redis доступны                      | `readinessProbe` в Kubernetes                       |
+| `/health`       | **Deprecated alias** для `/health/ready` | Backward compat; новые интеграции — `/health/ready` |
 ```
 
 ### 2. Postman

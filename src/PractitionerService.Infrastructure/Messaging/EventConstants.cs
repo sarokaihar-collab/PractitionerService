@@ -16,4 +16,21 @@ public static class EventConstants
 
     /// <summary>Supported event type: create a new practitioner.</summary>
     public const string TypeCreated = "created";
+
+    // Retry / DLQ (new)
+
+    /// <summary>Stream for messages that exhausted all retries.</summary>
+    public const string DeadLetterStreamKey = "practitioner-events-dlq";
+
+    /// <summary>Maximum delivery attempts before moving to the dead-letter stream.</summary>
+    public const int MaxRetries = 5;
+
+    /// <summary>Redis key prefix for per-message attempt counters.</summary>
+    public const string AttemptsKeyPrefix = "event:attempts:";
+
+    /// <summary>How long a message must be pending before another consumer may reclaim it.</summary>
+    public static readonly TimeSpan ReclaimMinIdle = TimeSpan.FromMinutes(2);
+
+    /// <summary>TTL for attempt counters (defensive cleanup).</summary>
+    public static readonly TimeSpan AttemptsKeyTtl = TimeSpan.FromHours(24);
 }

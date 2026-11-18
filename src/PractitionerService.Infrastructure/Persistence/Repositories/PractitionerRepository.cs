@@ -25,7 +25,6 @@ internal sealed class PractitionerRepository : IPractitionerRepository
     public async Task<PagedResult<Practitioner>> SearchAsync(PractitionerFilter filter, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(filter);
-
         IQueryable<Practitioner> query = _db.Practitioners.AsNoTracking();
 
         if (!filter.IncludeDeleted)
